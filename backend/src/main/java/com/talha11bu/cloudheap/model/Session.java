@@ -1,16 +1,20 @@
 package com.talha11bu.cloudheap.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
 @Data
+@Entity
 @NoArgsConstructor
+@AllArgsConstructor
 public class Session {
 
     @Id
@@ -19,26 +23,36 @@ public class Session {
     private String password;
 
     @Column(nullable = false)
-    private LocalTime expiresAt;
+    private LocalDateTime expiresAt;
 
+    @ToString.Exclude
+    @JsonIgnoreProperties("session")
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Users> users = new ArrayList<>();
 
+    @ToString.Exclude
+    @JsonIgnoreProperties("session")
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Files> files = new ArrayList<>();
 
-    public Session(String sessionId, String password, LocalTime expiresAt) {
+    public Session(String sessionId, String password, LocalDateTime expiresAt) {
         this.sessionId = sessionId;
         this.password = password;
         this.expiresAt = expiresAt;
     }
+
     public String getSessionId() {
         return sessionId;
     }
 
-    public LocalTime getExpiresAt() {
+    public LocalDateTime getExpiresAt() {
         return expiresAt;
     }
-
+    public String getPassword(){
+        return password;
+    }
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(this.expiresAt);
+    }
 }
 

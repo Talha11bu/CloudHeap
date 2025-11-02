@@ -8,8 +8,7 @@ public class SessionIdGenerator {
     public String generatedId() {
         String seed = "QWERTYUIOPASDFGHJKLZXCVBNMabcdefghijklmnopqrstuvwxyz0987654321";
         StringBuilder token = new StringBuilder();
-        int limit = 6;
-        for(int i = 0; i <= limit ; i++){
+        for(int i = 0; i < 6 ; i++){
             token.append(seed.charAt((int) Math.floor(Math.random()*seed.length())));
         }
         return token.toString();

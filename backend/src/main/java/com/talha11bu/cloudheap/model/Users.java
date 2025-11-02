@@ -1,8 +1,10 @@
 package com.talha11bu.cloudheap.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Data
 @Entity
@@ -15,6 +17,8 @@ public class Users {
 
     private String username;
 
+    @ToString.Exclude
+    @JsonIgnoreProperties("users")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "SessionID", nullable = false)
     private Session session;
