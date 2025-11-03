@@ -1,5 +1,13 @@
-function App() {
-  return;
-}
+import { useState } from 'react';
+import { useRef } from 'react';
 
-export default App
+import HomePage from './components/HomePage';
+import SessionPage from './components/SessionPage';
+
+export default function App() {
+	return (
+		<>
+			<HomePage />
+		</>
+	);
+}

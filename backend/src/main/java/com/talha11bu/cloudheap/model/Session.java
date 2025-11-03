@@ -2,17 +2,16 @@ package com.talha11bu.cloudheap.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+
 @Entity
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Session {
@@ -44,13 +43,13 @@ public class Session {
     public String getSessionId() {
         return sessionId;
     }
-
     public LocalDateTime getExpiresAt() {
         return expiresAt;
     }
     public String getPassword(){
         return password;
     }
+
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiresAt);
     }

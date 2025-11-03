@@ -1,12 +1,15 @@
 package com.talha11bu.cloudheap.services;
 
 import com.talha11bu.cloudheap.model.*;
+import com.talha11bu.cloudheap.repo.FilesRepo;
 import com.talha11bu.cloudheap.repo.SessionRepo;
 import com.talha11bu.cloudheap.repo.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -18,7 +21,13 @@ public class SessionService {
     @Autowired
     private UserRepo userRepo;
     @Autowired
+    private FilesRepo filesRepo;
+    @Autowired
     private SessionIdGenerator idGenerator;
+    @Autowired
+    private NotiffService notiffService;
+    @Autowired
+    private R2Service r2Service;
 
     @Transactional
     public CreateResponse createSession(CreateRequest request){
@@ -56,6 +65,13 @@ public class SessionService {
             Users newUsers = new Users(request.username(), session);
             userRepo.save(newUsers);
 
+            SessionNotiff joinNotification = new SessionNotiff(
+                    SessionNotiff.NotificationType.USER_JOINED,
+                    session.getSessionId(),
+                    request.username()
+            );
+            notiffService.notifySessionMembers(session.getSessionId(), joinNotification);
+
             Duration timeLeft = Duration.between(LocalDateTime.now(), session.getExpiresAt());
 
             Session responseSession  = sessionRepo.findById(request.sessionId()).get();
@@ -70,5 +86,29 @@ public class SessionService {
         } catch (Exception e) {
             return new JoinResponse(false, null, null, "Session Does not Exist");
         }
+    }
+
+    @Transactional
+    public Files uploadFile(String sessionId, MultipartFile multipartFile) throws IOException {
+        Session session = sessionRepo.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found."));
+
+        if (session.isExpired()) {
+            throw new RuntimeException("Session has expired.");
+        }
+
+        String r2Key = r2Service.uploadFile(multipartFile, sessionId);
+
+        Files newFileEntity = new Files(r2Key, multipartFile.getSize(), multipartFile.getContentType(), session);
+        filesRepo.save(newFileEntity);
+
+        SessionNotiff fileNotification = new SessionNotiff(
+                SessionNotiff.NotificationType.FILE_UPLOADED,
+                sessionId,
+                multipartFile.getOriginalFilename() // Send the user-friendly original name
+        );
+        notiffService.notifySessionMembers(sessionId, fileNotification);
+
+        return newFileEntity;
     }
 }

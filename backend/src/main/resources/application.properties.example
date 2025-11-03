@@ -1,0 +1,13 @@
+spring.application.name=cloudheap
+
+spring.datasource.url=jdbc:h2:mem:CloudHeap
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=
+spring.datasource.password=
+spring.h2.console.enabled=true
+
+cloudflare.r2.endpoint=https://<YOUR_ACCOUNT_ID>.r2.cloudflarestorage.com
+cloudflare.r2.bucket-name=<YOUR_R2_BUCKET_NAME>
+cloudflare.r2.access-key=<YOUR_R2_ACCESS_KEY_ID>
+cloudflare.r2.secret-key=<YOUR_R2_SECRET_ACCESS_KEY>
+
