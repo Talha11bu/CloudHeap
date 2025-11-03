@@ -1,10 +1,9 @@
 package com.talha11bu.cloudheap.services;
 
 import com.talha11bu.cloudheap.model.*;
-import com.talha11bu.cloudheap.repo.FilesRepo;
-import com.talha11bu.cloudheap.repo.SessionRepo;
-import com.talha11bu.cloudheap.repo.UserRepo;
+import com.talha11bu.cloudheap.repo.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,6 +11,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Service
 public class SessionService {
@@ -89,7 +90,7 @@ public class SessionService {
     }
 
     @Transactional
-    public Files uploadFile(String sessionId, MultipartFile multipartFile) throws IOException {
+    public UploadResponse uploadFile(String sessionId, MultipartFile multipartFile) throws IOException {
         Session session = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found."));
 
@@ -99,7 +100,7 @@ public class SessionService {
 
         String r2Key = r2Service.uploadFile(multipartFile, sessionId);
 
-        Files newFileEntity = new Files(r2Key, multipartFile.getSize(), multipartFile.getContentType(), session);
+        Files newFileEntity = new Files(r2Key, session);
         filesRepo.save(newFileEntity);
 
         SessionNotiff fileNotification = new SessionNotiff(
@@ -109,6 +110,31 @@ public class SessionService {
         );
         notiffService.notifySessionMembers(sessionId, fileNotification);
 
-        return newFileEntity;
+        return new UploadResponse(multipartFile.getOriginalFilename(), multipartFile.getContentType(), multipartFile.getSize());
+    }
+
+    @Scheduled(cron = "0 * * * * *")//runs every minute
+    @Transactional
+    public void cleanupExpiredSessions() {
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Session> expiredSessions = sessionRepo.findByExpiresAtBefore(now);
+
+        if (expiredSessions.isEmpty()) {
+            return;
+        }
+
+        Collection<String> keysToDelete = expiredSessions.stream()
+                .flatMap(session -> session.getFiles().stream())
+                .map(Files::getFileName)
+                .toList();
+
+        try{
+            r2Service.deleteFiles(keysToDelete);
+            sessionRepo.deleteAll(expiredSessions);
+        }catch (Exception e){
+            System.err.println("CRITICAL: Failed to complete session cleanup transaction. R2 or DB deletion failed: " + e.getMessage());
+            throw new RuntimeException("Session cleanup failed. Transaction rolled back.", e);
+        }
     }
 }

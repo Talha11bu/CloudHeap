@@ -19,20 +19,14 @@ public class Files {
 
     private String fileName;
 
-    private long size;
-
-    private String contentType;
-
     @ToString.Exclude
     @JsonIgnoreProperties("files")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "SessionID", nullable = false)
     private Session session;
 
-    public Files(String fileName, long size, String contentType, Session session) {
+    public Files(String fileName, Session session) {
         this.fileName = fileName;
-        this.size = size;
-        this.contentType = contentType;
         this.session = session;
     }
 

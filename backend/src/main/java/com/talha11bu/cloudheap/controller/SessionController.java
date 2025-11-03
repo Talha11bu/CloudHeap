@@ -43,12 +43,12 @@ public class SessionController {
     }
 
     @PostMapping("/{sessionId}/upload")
-    public ResponseEntity<Files> uploadFile(@PathVariable String sessionId, @RequestParam MultipartFile file){
+    public ResponseEntity<UploadResponse> uploadFile(@PathVariable String sessionId, @RequestParam MultipartFile file){
         try {
             if (file.isEmpty())
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 
-            Files fileInfo = sessionService.uploadFile(sessionId, file);
+            UploadResponse fileInfo = sessionService.uploadFile(sessionId, file);
 
             return new ResponseEntity<>(fileInfo, HttpStatus.ACCEPTED);
         } catch (RuntimeException e) {
