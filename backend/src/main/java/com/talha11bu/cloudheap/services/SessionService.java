@@ -3,6 +3,7 @@ package com.talha11bu.cloudheap.services;
 import com.talha11bu.cloudheap.model.*;
 import com.talha11bu.cloudheap.repo.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,8 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class SessionService {
@@ -67,7 +67,7 @@ public class SessionService {
             userRepo.save(newUsers);
 
             SessionNotiff joinNotification = new SessionNotiff(
-                    SessionNotiff.NotificationType.USER_JOINED,
+                    SessionNotiff.NotifyType.USER_JOINED,
                     session.getSessionId(),
                     request.username()
             );
@@ -95,22 +95,141 @@ public class SessionService {
                 .orElseThrow(() -> new RuntimeException("Session not found."));
 
         if (session.isExpired()) {
+            System.err.println("Session Expired");
             throw new RuntimeException("Session has expired.");
         }
 
-        String r2Key = r2Service.uploadFile(multipartFile, sessionId);
+        try {
+            String r2Key = r2Service.uploadFile(multipartFile, sessionId);
 
-        Files newFileEntity = new Files(r2Key, session);
-        filesRepo.save(newFileEntity);
+            Files newFileEntity = new Files(multipartFile.getOriginalFilename(), r2Key, session);
+
+            filesRepo.save(newFileEntity);
+        } catch (IOException e) {
+            throw new RuntimeException("R2 upload failed " + e.getMessage());
+        }
 
         SessionNotiff fileNotification = new SessionNotiff(
-                SessionNotiff.NotificationType.FILE_UPLOADED,
+                SessionNotiff.NotifyType.FILE_UPLOADED,
                 sessionId,
-                multipartFile.getOriginalFilename() // Send the user-friendly original name
+                multipartFile.getOriginalFilename()
         );
         notiffService.notifySessionMembers(sessionId, fileNotification);
 
-        return new UploadResponse(multipartFile.getOriginalFilename(), multipartFile.getContentType(), multipartFile.getSize());
+        return new UploadResponse(
+                multipartFile.getOriginalFilename(),
+                multipartFile.getContentType(),
+                multipartFile.getSize());
+    }
+
+    public Resource downloadFile(String sessionId, String password, String filename){
+        Files file = filesRepo.findByFileNameAndSessionSessionId(filename, sessionId)
+                .orElseThrow(() -> new NoSuchElementException("File " + filename + " not found in session " + sessionId));
+
+        Session session = file.getSession();
+        if (!session.getPassword().equals(password))
+            throw new SecurityException("Invalid Password");
+
+        if(session.isExpired())
+            throw new SecurityException("Cannot download File Session Expired");
+
+        try {
+            return r2Service.downloadFile(file.getR2Key());
+        } catch (Exception e) {
+            throw new RuntimeException("Something went Bad");
+        }
+    }
+
+    public Resource downloadAllFilesAsZip(String sessionId, String password){
+        Session session = sessionRepo.findById(sessionId)
+                .orElseThrow(()->new NoSuchElementException("Session not found"));
+
+        if (!session.getPassword().equals(password))
+            throw new SecurityException("Invalid Password");
+
+        if(session.isExpired())
+            throw new SecurityException("Cannot download Files Session Expired");
+
+        List<String> r2Keys = session.getFiles().stream()
+                .map(Files::getR2Key)
+                .toList();
+
+        if(r2Keys.isEmpty()){
+            throw new NoSuchElementException("No files available to download");
+        }
+        try{
+            return  r2Service.donwloadFilesAsZip(r2Keys);
+        } catch (IOException e) {
+            throw new RuntimeException("Error creating ZIP File from R2", e);
+        }
+    }
+
+    @Transactional
+    public void endSessionByUsers(String sessionId, String username){
+        Session session = sessionRepo.findById(sessionId).get();
+
+
+        if(!session.getUsers().toString().contains(username)){
+            throw new SecurityException(username + "user not Authorized");
+        }
+
+        List<String> keysToDelete = session.getFiles().stream()
+                .map(Files::getR2Key)
+                .toList();
+
+        if (!keysToDelete.isEmpty()) {
+            try {
+                r2Service.deleteFiles(keysToDelete);
+                System.out.println("R2 files for session " + sessionId + " deleted.");
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to delete R2 files for session " + sessionId + ". Aborting DB deletion.", e);
+            }
+        }
+        sessionRepo.delete(session);
+        notiffService.sessionClosedNotiff(sessionId, username);
+    }
+
+    @Transactional
+    public void removeUser(String sessionId, String username) {
+        Optional<Users> user = userRepo.findByUsernameAndSessionSessionId(username, sessionId);
+
+        if(user.isEmpty())
+            throw new NoSuchElementException(username);
+
+        Users userToRemove = user.get();
+        Session session = userToRemove.getSession();
+
+        userRepo.delete(userToRemove);
+
+        SessionNotiff leaveNotiff = new SessionNotiff(
+                SessionNotiff.NotifyType.USER_LEFT,
+                sessionId,
+                username
+        );
+
+        notiffService.notifySessionMembers(sessionId, leaveNotiff);
+    }
+
+    public void deleteFile(String sessionId, String fileName){
+        Files file = filesRepo.findByFileNameAndSessionSessionId(fileName, sessionId)
+                .orElseThrow(() -> new NoSuchElementException("File " + fileName + " does not exist"));
+
+        Session session = file.getSession();
+
+        String r2Key = file.getR2Key();
+
+        try{
+            r2Service.deleteFile(r2Key);
+        } catch (RuntimeException e) {
+            throw new RuntimeException("Failed to delete file " + fileName);
+        }
+        filesRepo.delete(file);
+        SessionNotiff deletionNotiff = new SessionNotiff(
+                SessionNotiff.NotifyType.FILE_DELETED,
+                sessionId,
+                file.getFileName()
+        );
+        notiffService.notifySessionMembers(sessionId, deletionNotiff);
     }
 
     @Scheduled(cron = "0 * * * * *")//runs every minute
@@ -118,7 +237,14 @@ public class SessionService {
     public void cleanupExpiredSessions() {
         LocalDateTime now = LocalDateTime.now();
 
-        List<Session> expiredSessions = sessionRepo.findByExpiresAtBefore(now);
+        List<Session> expiredByTime = sessionRepo.findByExpiresAtBefore(now);
+
+        List<Session> expiredByEmpty = sessionRepo.findEmptySessions();
+
+        List<Session> expiredSessions = new ArrayList<>(expiredByTime.stream()
+                .filter(s -> expiredByEmpty.stream().noneMatch(e -> e.getSessionId().equals(s.getSessionId())))
+                .toList());
+        expiredSessions.addAll(expiredByEmpty);
 
         if (expiredSessions.isEmpty()) {
             return;
@@ -126,11 +252,13 @@ public class SessionService {
 
         Collection<String> keysToDelete = expiredSessions.stream()
                 .flatMap(session -> session.getFiles().stream())
-                .map(Files::getFileName)
+                .map(Files::getR2Key)
                 .toList();
 
         try{
-            r2Service.deleteFiles(keysToDelete);
+            if(!keysToDelete.isEmpty())
+                r2Service.deleteFiles(keysToDelete);
+
             sessionRepo.deleteAll(expiredSessions);
         }catch (Exception e){
             System.err.println("CRITICAL: Failed to complete session cleanup transaction. R2 or DB deletion failed: " + e.getMessage());

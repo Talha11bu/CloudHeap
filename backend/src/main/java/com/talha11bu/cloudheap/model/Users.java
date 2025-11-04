@@ -18,6 +18,10 @@ public class Users {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id; // A primary key for the USERS table itself
 
+    private String token;
+
+    private String webSocketId;
+
     private String username;
 
     @ToString.Exclude

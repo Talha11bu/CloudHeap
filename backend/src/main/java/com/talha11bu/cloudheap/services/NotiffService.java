@@ -16,4 +16,11 @@ public class NotiffService {
         messagingTemplate.convertAndSend(destination, notification);
         System.out.println("Broadcasted to " + destination + ": " + notification.getType());
     }
+
+    public void sessionClosedNotiff(String sessionId, String username) {
+        String payload = String.format("Session %s has been successfully ended. All associated files have been deleted.", sessionId);
+        String destination = "/topic/session/" + sessionId;
+        messagingTemplate.convertAndSend(destination, payload);
+
+    }
 }

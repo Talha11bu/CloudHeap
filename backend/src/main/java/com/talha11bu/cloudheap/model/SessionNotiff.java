@@ -8,9 +8,9 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class SessionNotiff {
-    public enum NotificationType { USER_JOINED, USER_LEFT, FILE_UPLOADED, FILE_DELETED }
+    public enum NotifyType { USER_JOINED, USER_LEFT, FILE_UPLOADED, FILE_DELETED }
 
-    private NotificationType type;
+    private NotifyType type;
     private String sessionId;
     private String payload;
 }

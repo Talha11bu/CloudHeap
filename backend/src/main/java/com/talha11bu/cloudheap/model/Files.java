@@ -17,6 +17,7 @@ public class Files {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
+    private String r2Key;
     private String fileName;
 
     @ToString.Exclude
@@ -25,8 +26,9 @@ public class Files {
     @JoinColumn(name = "SessionID", nullable = false)
     private Session session;
 
-    public Files(String fileName, Session session) {
+    public Files(String fileName, String r2Key, Session session) {
         this.fileName = fileName;
+        this.r2Key = r2Key;
         this.session = session;
     }
 

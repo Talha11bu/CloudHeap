@@ -11,3 +11,6 @@ cloudflare.r2.bucket-name=<YOUR_R2_BUCKET_NAME>
 cloudflare.r2.access-key=<YOUR_R2_ACCESS_KEY_ID>
 cloudflare.r2.secret-key=<YOUR_R2_SECRET_ACCESS_KEY>
 
+spring.servlet.multipart.max-file-size=<Set Max File Size server can Recieve e.g. 250MB (megabytes)>
+spring.servlet.multipart.max-request-size=<Max request size, should be larger than File size e.g. 255MB>
+
