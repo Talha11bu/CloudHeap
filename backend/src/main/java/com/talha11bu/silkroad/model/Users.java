@@ -1,4 +1,4 @@
-package com.talha11bu.cloudheap.model;
+package com.talha11bu.silkroad.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -7,29 +7,31 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
-public class Files {
+public class Users {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private int id; // A primary key for the USERS table itself
 
-    private String r2Key;
-    private String fileName;
+    private String token;
+
+    private String webSocketId;
+
+    private String username;
 
     @ToString.Exclude
-    @JsonIgnoreProperties("files")
+    @JsonIgnoreProperties("users")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "SessionID", nullable = false)
     private Session session;
 
-    public Files(String fileName, String r2Key, Session session) {
-        this.fileName = fileName;
-        this.r2Key = r2Key;
+    public Users(String username, Session session) {
+        this.username = username;
         this.session = session;
     }
-
 }

@@ -1,7 +1,7 @@
-package com.talha11bu.cloudheap.controller;
+package com.talha11bu.silkroad.controller;
 
-import com.talha11bu.cloudheap.model.*;
-import com.talha11bu.cloudheap.services.SessionService;
+import com.talha11bu.silkroad.model.*;
+import com.talha11bu.silkroad.services.SessionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;

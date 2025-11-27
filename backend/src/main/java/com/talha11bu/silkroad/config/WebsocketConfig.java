@@ -1,4 +1,4 @@
-package com.talha11bu.cloudheap.config;
+package com.talha11bu.silkroad.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

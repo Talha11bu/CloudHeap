@@ -1,7 +1,7 @@
-package com.talha11bu.cloudheap.services;
+package com.talha11bu.silkroad.services;
 
-import com.talha11bu.cloudheap.model.*;
-import com.talha11bu.cloudheap.repo.*;
+import com.talha11bu.silkroad.model.*;
+import com.talha11bu.silkroad.repo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -71,11 +71,12 @@ public class SessionService {
                     session.getSessionId(),
                     request.username()
             );
+
+            Session responseSession  = sessionRepo.findById(request.sessionId()).orElseThrow();
+
             notiffService.notifySessionMembers(session.getSessionId(), joinNotification);
 
             Duration timeLeft = Duration.between(LocalDateTime.now(), session.getExpiresAt());
-
-            Session responseSession  = sessionRepo.findById(request.sessionId()).get();
 
             return new JoinResponse(
                     true,
@@ -166,7 +167,7 @@ public class SessionService {
 
     @Transactional
     public void endSessionByUsers(String sessionId, String username){
-        Session session = sessionRepo.findById(sessionId).get();
+        Session session = sessionRepo.findById(sessionId).orElseThrow();
 
 
         if(!session.getUsers().toString().contains(username)){
@@ -235,6 +236,11 @@ public class SessionService {
     @Scheduled(cron = "0 * * * * *")//runs every minute
     @Transactional
     public void cleanupExpiredSessions() {
+
+        if(sessionRepo.findAll().isEmpty()){
+            return;
+        }
+
         LocalDateTime now = LocalDateTime.now();
 
         List<Session> expiredByTime = sessionRepo.findByExpiresAtBefore(now);

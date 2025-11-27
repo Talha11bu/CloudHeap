@@ -6,7 +6,7 @@ plugins {
 
 group = "com.talha11bu"
 version = "0.0.1-SNAPSHOT"
-description = "Spring Boot API for facilitating file uploads and sesssion management for my File Sharing website"
+description = "Spring Boot API for facilitating file uploads, downloads and sesssion management for my File Sharing website"
 
 java {
 	toolchain {

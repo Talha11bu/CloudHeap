@@ -1,7 +1,6 @@
-package com.talha11bu.cloudheap.repo;
+package com.talha11bu.silkroad.repo;
 
-import com.talha11bu.cloudheap.model.Session;
-import com.talha11bu.cloudheap.model.Users;
+import com.talha11bu.silkroad.model.Session;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

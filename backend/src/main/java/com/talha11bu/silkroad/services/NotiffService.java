@@ -1,6 +1,6 @@
-package com.talha11bu.cloudheap.services;
+package com.talha11bu.silkroad.services;
 
-import com.talha11bu.cloudheap.model.SessionNotiff;
+import com.talha11bu.silkroad.model.SessionNotiff;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;

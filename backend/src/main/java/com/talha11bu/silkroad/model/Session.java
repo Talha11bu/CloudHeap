@@ -1,4 +1,4 @@
-package com.talha11bu.cloudheap.model;
+package com.talha11bu.silkroad.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;

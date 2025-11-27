@@ -1,4 +1,4 @@
-package com.talha11bu.cloudheap;
+package com.talha11bu.silkroad;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,10 +6,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
 @SpringBootApplication
-public class CloudheapApplication {
+public class SilkroadApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(CloudheapApplication.class, args);
+		SpringApplication.run(SilkroadApplication.class, args);
 	}
 
 }

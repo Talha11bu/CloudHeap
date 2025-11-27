@@ -1,4 +1,4 @@
-package com.talha11bu.cloudheap.model;
+package com.talha11bu.silkroad.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

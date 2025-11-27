@@ -1,6 +1,6 @@
-package com.talha11bu.cloudheap.repo;
+package com.talha11bu.silkroad.repo;
 
-import com.talha11bu.cloudheap.model.Files;
+import com.talha11bu.silkroad.model.Files;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
