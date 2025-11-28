@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useRef } from 'react';
 
 import HomePage from './components/HomePage';
 import SessionPage from './components/SessionPage';

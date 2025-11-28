@@ -1,18 +1,25 @@
-import NavBar from './NavBar';
-import CreateSession from './CreateSession';
-import JoinSession from './JoinSession';
-import CreatorCard from './CreatorCard';
+import NavBar from './home/NavBar';
+import CreateSession from './home/CreateSession';
+import JoinSession from './home/JoinSession';
+import CreatorCard from './home/CreatorCard';
 
 export default function HomePage() {
 	return (
-		<div className='h-screen bg-emerald-800/80'>
+		<div className='h-screen bg-emerald-800 '>
 			<NavBar />
-			<div className='flex flex-col items-center'>
-				<h1 className='text-neutral-900'>
-					An<span className='text-amber-300 font-serifn'> Easier </span>way to
-					share files
+			<div className='flex flex-col items-center gap-2'>
+				<h1 className='text-neutral-200 drop-shadow-md'>
+					A
+					<span className='text-amber-400/80 font-serif text-shadow-2xs '>
+						{' '}
+						secure{' '}
+					</span>
+					way to share files
 				</h1>
-				<p></p>
+				<p>
+					Annonymity, Data privacy & fast transfers across all your smart
+					devices
+				</p>
 				<CreateSession />
 				<JoinSession />
 				<CreatorCard />
