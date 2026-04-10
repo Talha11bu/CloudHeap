@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @RestController
@@ -22,26 +23,30 @@ public class SessionController {
     SessionService sessionService;
 
     @PostMapping("/create")//https://<SiteName>/sessions/create
-    public ResponseEntity<CreateResponse> createSession(@RequestBody CreateRequest createRequest){
+    public ResponseEntity<CreateResponse> createSession(@RequestBody CreateRequest createRequest) {
         CreateResponse response = sessionService.createSession(createRequest);
-        if(response.success())
+        if (response.success())
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         else
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
+
     @PostMapping("/join")//https://<SiteName>/sessions/join
-    public ResponseEntity<JoinResponse> joinSession(@RequestBody JoinRequest joinRequest){
+    public ResponseEntity<JoinResponse> joinSession(@RequestBody JoinRequest joinRequest) {
         JoinResponse response = sessionService.joinSession(joinRequest);
 
-        if(response.success())
+        if (response.success())
             return new ResponseEntity<>(response, HttpStatus.FOUND);
+        else
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
 
-        else if(response.message().contains("Invalid Password"))
-            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
-
-        else if(response.message().contains("Session Expired"))
-            return new ResponseEntity<>(response, HttpStatus.GONE);
-
+    @PostMapping("/rejoin")
+    public ResponseEntity<JoinResponse> rejoinSession(@RequestHeader("Authorization") String auth) {
+        String token = auth.replace("Bearer ", "");
+        JoinResponse response = sessionService.rejoinSession(token);
+        if (response.success())
+            return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
         else
             return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
@@ -66,20 +71,40 @@ public class SessionController {
     }
 
     @GetMapping("/{sessionId}/file")//https://<site-name>/sessions/{sessionId}/file?password={password}&filename={filename}
-    public ResponseEntity<Resource> downloadFile(@PathVariable String sessionId, @RequestParam String password, @RequestParam String filename){
-        try{
+    public ResponseEntity<Resource> downloadFile(@PathVariable String sessionId, @RequestParam String password,
+            @RequestParam String filename) {
+        try {
             Resource fileResource = sessionService.downloadFile(sessionId, password, filename);
 
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\""+filename+"\"")
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .body(fileResource);
         } catch (SecurityException e) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
-        }catch (NoSuchElementException e){
+        } catch (NoSuchElementException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/{sessionId}/files/{fileName}/download-url")
+    public ResponseEntity<?> getFileDownloadUrl(@PathVariable String sessionId, @PathVariable String fileName,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing token");
+        }
+
+        String token = authHeader.replace("Bearer ", "");
+
+        try {
+            String downloadUrl = sessionService.getPreSignedUrlForFile(sessionId, fileName, token);
+            return ResponseEntity.ok(Map.of("url", downloadUrl));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 

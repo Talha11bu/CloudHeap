@@ -6,14 +6,19 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -62,6 +67,17 @@ public class R2Service {
             }
             throw new RuntimeException("Failed to Downlaod from R2 "+ e);
         }
+    }
+
+    public String generatePreSignedDownloadUrl(String objectKey) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(objectKey).build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(15)).getObjectRequest(getObjectRequest).build();
+
+        PresignedGetObjectRequest presignedRequest = r2Presigner.presignGetObject(presignRequest);
+
+        return presignedRequest.url().toString();
     }
 
     public Resource donwloadFilesAsZip(List<String> r2Keys) throws IOException{

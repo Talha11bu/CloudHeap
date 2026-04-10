@@ -2,6 +2,9 @@ package com.talha11bu.silkroad.services;
 
 import com.talha11bu.silkroad.model.*;
 import com.talha11bu.silkroad.repo.*;
+
+import io.jsonwebtoken.Claims;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,16 +29,17 @@ public class SessionService {
     @Autowired
     private SessionIdGenerator idGenerator;
     @Autowired
+    private JwtTokenService jwtTokenService;
+    @Autowired
     private NotiffService notiffService;
     @Autowired
     private R2Service r2Service;
 
     @Transactional
-    public CreateResponse createSession(CreateRequest request){
-        try{
+    public CreateResponse createSession(CreateRequest request) {
+        try {
             String newSessionId = idGenerator.generatedId();
-            String username = request.username();
-            String password = request.password();
+
             LocalDateTime timeStamp = LocalDateTime.now().plusMinutes(request.duration());
 
             Session newSession = new Session(newSessionId, request.password(), timeStamp);
@@ -44,9 +48,9 @@ public class SessionService {
 
             userRepo.save(initialUser);
 
-            Duration duration  = Duration.between(LocalDateTime.now(), savedSession.getExpiresAt());
+            Duration duration = Duration.between(LocalDateTime.now(), savedSession.getExpiresAt());
             return new CreateResponse(true, savedSession.getSessionId(), savedSession.getPassword(), duration);
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return new CreateResponse(false, null, null, null);
         }
@@ -56,50 +60,51 @@ public class SessionService {
     public JoinResponse joinSession(JoinRequest request) {
         try {
             Session session = sessionRepo.findById(request.sessionId()).orElseThrow();
-            if(!request.password().equals(session.getPassword())){
-                return new JoinResponse(false, null, null, "Invalid Password");
+            if (!request.password().equals(session.getPassword())) {
+                return new JoinResponse(false, null, null, null);
             }
             if (session.isExpired()) {
-                return new JoinResponse(false, null, null, "Session Expired");
+                return new JoinResponse(false, null, null, null);
             }
 
             Users newUsers = new Users(request.username(), session);
             userRepo.save(newUsers);
 
-            SessionNotiff joinNotification = new SessionNotiff(
-                    SessionNotiff.NotifyType.USER_JOINED,
-                    session.getSessionId(),
-                    request.username()
-            );
+            SessionNotiff joinNotification = new SessionNotiff(SessionNotiff.NotifyType.USER_JOINED,
+                    session.getSessionId(), request.username());
 
-            Session responseSession  = sessionRepo.findById(request.sessionId()).orElseThrow();
+            Session responseSession = sessionRepo.findById(request.sessionId()).orElseThrow();
 
             notiffService.notifySessionMembers(session.getSessionId(), joinNotification);
 
             Duration timeLeft = Duration.between(LocalDateTime.now(), session.getExpiresAt());
 
-            return new JoinResponse(
-                    true,
-                    responseSession,
-                    timeLeft,
-                    "Joined Successfully"
-            );
+            return new JoinResponse(true, jwtTokenService.generateToken(request.sessionId(), request.username()),
+                    responseSession, timeLeft);
 
         } catch (Exception e) {
-            return new JoinResponse(false, null, null, "Session Does not Exist");
+            return new JoinResponse(false, null, null, null);
+        }
+    }
+
+    public JoinResponse rejoinSession(String token) {
+        Claims claims = jwtTokenService.validateAndParseToken(token);
+        String sessionId = claims.get("sid", String.class);
+        // String name = claims.getSubject();
+
+        try {
+            Session session = sessionRepo.findById(sessionId).orElseThrow();
+            Duration timeLeft = Duration.between(LocalDateTime.now(), session.getExpiresAt());
+
+            return new JoinResponse(true, token, session, timeLeft);
+        } catch (Exception e) {
+            return new JoinResponse(false, null, null, null);
         }
     }
 
     @Transactional
     public UploadResponse uploadFile(String sessionId, MultipartFile multipartFile) throws IOException {
-        Session session = sessionRepo.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Session not found."));
-
-        if (session.isExpired()) {
-            System.err.println("Session Expired");
-            throw new RuntimeException("Session has expired.");
-        }
-
+        Session session = sessionRepo.findById(sessionId).orElseThrow(() -> new RuntimeException("Session not found."));
         try {
             String r2Key = r2Service.uploadFile(multipartFile, sessionId);
 
@@ -110,28 +115,23 @@ public class SessionService {
             throw new RuntimeException("R2 upload failed " + e.getMessage());
         }
 
-        SessionNotiff fileNotification = new SessionNotiff(
-                SessionNotiff.NotifyType.FILE_UPLOADED,
-                sessionId,
-                multipartFile.getOriginalFilename()
-        );
+        SessionNotiff fileNotification = new SessionNotiff(SessionNotiff.NotifyType.FILE_UPLOADED, sessionId,
+                multipartFile.getOriginalFilename());
         notiffService.notifySessionMembers(sessionId, fileNotification);
 
-        return new UploadResponse(
-                multipartFile.getOriginalFilename(),
-                multipartFile.getContentType(),
+        return new UploadResponse(multipartFile.getOriginalFilename(), multipartFile.getContentType(),
                 multipartFile.getSize());
     }
 
-    public Resource downloadFile(String sessionId, String password, String filename){
-        Files file = filesRepo.findByFileNameAndSessionSessionId(filename, sessionId)
-                .orElseThrow(() -> new NoSuchElementException("File " + filename + " not found in session " + sessionId));
+    public Resource downloadFile(String sessionId, String password, String filename) {
+        Files file = filesRepo.findByFileNameAndSessionSessionId(filename, sessionId).orElseThrow(
+                () -> new NoSuchElementException("File " + filename + " not found in session " + sessionId));
 
         Session session = file.getSession();
         if (!session.getPassword().equals(password))
             throw new SecurityException("Invalid Password");
 
-        if(session.isExpired())
+        if (session.isExpired())
             throw new SecurityException("Cannot download File Session Expired");
 
         try {
@@ -141,49 +141,64 @@ public class SessionService {
         }
     }
 
-    public Resource downloadAllFilesAsZip(String sessionId, String password){
+    // Inside SessionService.java
+
+    public String getPreSignedUrlForFile(String sessionId, String fileName, String token) {
+        // 1. Verify the user is authenticated for this specific session
+        Claims claims = jwtTokenService.validateAndParseToken(token);
+        String tokenSessionId = claims.get("sid", String.class);
+
+        if (!tokenSessionId.equals(sessionId)) {
+            throw new SecurityException("You do not have access to this session's files.");
+        }
+        try {
+            Files file = filesRepo.findByFileNameAndSessionSessionId(fileName, sessionId).orElseThrow();
+
+            return r2Service.generatePreSignedDownloadUrl(file.getR2Key());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public Resource downloadAllFilesAsZip(String sessionId, String password) {
         Session session = sessionRepo.findById(sessionId)
-                .orElseThrow(()->new NoSuchElementException("Session not found"));
+                .orElseThrow(() -> new NoSuchElementException("Session not found"));
 
         if (!session.getPassword().equals(password))
             throw new SecurityException("Invalid Password");
 
-        if(session.isExpired())
+        if (session.isExpired())
             throw new SecurityException("Cannot download Files Session Expired");
 
-        List<String> r2Keys = session.getFiles().stream()
-                .map(Files::getR2Key)
-                .toList();
+        List<String> r2Keys = session.getFiles().stream().map(Files::getR2Key).toList();
 
-        if(r2Keys.isEmpty()){
+        if (r2Keys.isEmpty()) {
             throw new NoSuchElementException("No files available to download");
         }
-        try{
-            return  r2Service.donwloadFilesAsZip(r2Keys);
+        try {
+            return r2Service.donwloadFilesAsZip(r2Keys);
         } catch (IOException e) {
             throw new RuntimeException("Error creating ZIP File from R2", e);
         }
     }
 
     @Transactional
-    public void endSessionByUsers(String sessionId, String username){
+    public void endSessionByUsers(String sessionId, String username) {
         Session session = sessionRepo.findById(sessionId).orElseThrow();
 
-
-        if(!session.getUsers().toString().contains(username)){
+        if (!session.getUsers().toString().contains(username)) {
             throw new SecurityException(username + "user not Authorized");
         }
 
-        List<String> keysToDelete = session.getFiles().stream()
-                .map(Files::getR2Key)
-                .toList();
+        List<String> keysToDelete = session.getFiles().stream().map(Files::getR2Key).toList();
 
         if (!keysToDelete.isEmpty()) {
             try {
                 r2Service.deleteFiles(keysToDelete);
                 System.out.println("R2 files for session " + sessionId + " deleted.");
             } catch (Exception e) {
-                throw new RuntimeException("Failed to delete R2 files for session " + sessionId + ". Aborting DB deletion.", e);
+                throw new RuntimeException(
+                        "Failed to delete R2 files for session " + sessionId + ". Aborting DB deletion.", e);
             }
         }
         sessionRepo.delete(session);
@@ -194,50 +209,40 @@ public class SessionService {
     public void removeUser(String sessionId, String username) {
         Optional<Users> user = userRepo.findByUsernameAndSessionSessionId(username, sessionId);
 
-        if(user.isEmpty())
+        if (user.isEmpty())
             throw new NoSuchElementException(username);
 
         Users userToRemove = user.get();
-        Session session = userToRemove.getSession();
 
         userRepo.delete(userToRemove);
 
-        SessionNotiff leaveNotiff = new SessionNotiff(
-                SessionNotiff.NotifyType.USER_LEFT,
-                sessionId,
-                username
-        );
+        SessionNotiff leaveNotiff = new SessionNotiff(SessionNotiff.NotifyType.USER_LEFT, sessionId, username);
 
         notiffService.notifySessionMembers(sessionId, leaveNotiff);
     }
 
-    public void deleteFile(String sessionId, String fileName){
+    public void deleteFile(String sessionId, String fileName) {
         Files file = filesRepo.findByFileNameAndSessionSessionId(fileName, sessionId)
                 .orElseThrow(() -> new NoSuchElementException("File " + fileName + " does not exist"));
 
-        Session session = file.getSession();
-
         String r2Key = file.getR2Key();
 
-        try{
+        try {
             r2Service.deleteFile(r2Key);
         } catch (RuntimeException e) {
             throw new RuntimeException("Failed to delete file " + fileName);
         }
         filesRepo.delete(file);
-        SessionNotiff deletionNotiff = new SessionNotiff(
-                SessionNotiff.NotifyType.FILE_DELETED,
-                sessionId,
-                file.getFileName()
-        );
+        SessionNotiff deletionNotiff = new SessionNotiff(SessionNotiff.NotifyType.FILE_DELETED, sessionId,
+                file.getFileName());
         notiffService.notifySessionMembers(sessionId, deletionNotiff);
     }
 
-    @Scheduled(cron = "0 * * * * *")//runs every minute
+    @Scheduled(cron = "0 * * * * *") // runs every minute
     @Transactional
     public void cleanupExpiredSessions() {
 
-        if(sessionRepo.findAll().isEmpty()){
+        if (sessionRepo.findAll().isEmpty()) {
             return;
         }
 
@@ -256,18 +261,17 @@ public class SessionService {
             return;
         }
 
-        Collection<String> keysToDelete = expiredSessions.stream()
-                .flatMap(session -> session.getFiles().stream())
-                .map(Files::getR2Key)
-                .toList();
+        Collection<String> keysToDelete = expiredSessions.stream().flatMap(session -> session.getFiles().stream())
+                .map(Files::getR2Key).toList();
 
-        try{
-            if(!keysToDelete.isEmpty())
+        try {
+            if (!keysToDelete.isEmpty())
                 r2Service.deleteFiles(keysToDelete);
 
             sessionRepo.deleteAll(expiredSessions);
-        }catch (Exception e){
-            System.err.println("CRITICAL: Failed to complete session cleanup transaction. R2 or DB deletion failed: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("CRITICAL: Failed to complete session cleanup transaction. R2 or DB deletion failed: "
+                    + e.getMessage());
             throw new RuntimeException("Session cleanup failed. Transaction rolled back.", e);
         }
     }
