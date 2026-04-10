@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.talha11bu"
-version = "0.0.1-SNAPSHOT"
+version = "0.2.0 Beta"
 description = "Spring Boot API for facilitating file uploads, downloads and sesssion management for my File Sharing website"
 
 java {
