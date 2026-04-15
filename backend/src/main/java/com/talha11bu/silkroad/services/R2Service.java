@@ -34,6 +34,9 @@ public class R2Service {
     private S3Client r2Client;
 
     @Autowired
+    private S3Presigner r2Presigner;
+
+    @Autowired
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
 
