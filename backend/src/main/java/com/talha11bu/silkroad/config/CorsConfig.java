@@ -9,16 +9,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class CorsConfig {
 
 	@Bean
-	public WebMvcConfigurer corsConfigrer() {
+	public WebMvcConfigurer corsConfigurer() {
 		return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/sessions/**") // API endpoint
-                        .allowedOrigins("") // frontend URL 
+                registry.addMapping("/**") // API endpoint
+                        .allowedOrigins("http://localhost:5173") // frontend URL 
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("Authorization", "Content-Type", "X-Requested-With")
+                        .allowedHeaders("*")
                         .allowCredentials(true)
-                        .maxAge(2400); // Cache CORS response for 40 mins
+                        .maxAge(2400);
             }
 		};
 	}

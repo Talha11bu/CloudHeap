@@ -13,7 +13,8 @@
     "@stomp/stompjs": "^7.3.0",
     "@tanstack/react-query": "^5.100.5",
     "axios": "^1.15.2",
-    "lucide-react": "^1.11.0",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "sockjs-client": "^1.6.1",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.2.4",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

@@ -43,7 +43,7 @@ dependencies {
     
     //S3 Dependencies (Versions inherited from BOM)
     implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:s3-presigner")
+
     // JWT 
     implementation("io.jsonwebtoken:jjwt-api:0.11.5")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
