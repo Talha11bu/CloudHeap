@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import AuthModal from './HomePage/AuthModal';
+import { AuthModal } from './HomePage/AuthModal';
 import { TechStack } from './HomePage/TechStack';
 import { About } from './HomePage/About';
 import { Features } from './HomePage/Features';

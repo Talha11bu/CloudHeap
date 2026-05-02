@@ -19,7 +19,7 @@ export const FooterSection = () => {
 					<div className='space-y-10'>
 						<div>
 							<h2 className='text-red-500 font-mono text-xs uppercase tracking-[0.4em] mb-4'>
-								// LEGAL HANDSHAKE
+								LEGAL HANDSHAKE
 							</h2>
 							<h3 className='text-4xl font-black text-white tracking-tighter'>
 								PRIVACY <span className='text-neutral-500'>&</span> TERMS
@@ -100,7 +100,7 @@ export const FooterSection = () => {
 												Architect
 											</p>
 											<h4 className='text-2xl font-black text-white tracking-tighter uppercase'>
-												Abu Talha
+												Laziüm
 											</h4>
 										</div>
 										<div className='h-10 w-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center'>

@@ -104,7 +104,7 @@ export const About = () => {
 							</li>
 						</ul>
 
-						{/* Subtle decorative visualizer */}
+						{/* Subtle decorative visualizer*/}
 						<div className='pt-6 border-t border-white/5 flex items-end gap-1 h-12'>
 							{[40, 70, 45, 90, 65, 80, 30, 95, 50].map((h, i) => (
 								<motion.div
