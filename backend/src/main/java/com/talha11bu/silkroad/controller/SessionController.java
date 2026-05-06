@@ -32,22 +32,70 @@ public class SessionController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
+    @ResponseBody
     @PostMapping("/join")//https://<SiteName>/sessions/join
     public ResponseEntity<JoinResponse> joinSession(@RequestBody JoinRequest joinRequest) {
         JoinResponse response = sessionService.joinSession(joinRequest);
 
-        if (response.success())
-            return new ResponseEntity<>(response, HttpStatus.FOUND);
+        if (response.success()){
+            Session session = response.session();
+            
+            List<String> userNames = session.getUsers().stream()
+                    .map(Users::getUsername) 
+                    .toList();
+                    
+            List<String> fileNames = session.getFiles().stream()
+                    .map(Files::getFileName) 
+                    .toList();
+
+            Map<String, Object> sessionDto = new HashMap<>();
+            sessionDto.put("sessionId", session.getSessionId());
+            sessionDto.put("password", session.getPassword());
+            sessionDto.put("expiresAt", session.getExpiresAt().toString());
+            sessionDto.put("users", userNames);
+            sessionDto.put("files", fileNames);
+
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("success", true);
+            responseBody.put("sucess", true);
+            responseBody.put("Token", response.token());
+            responseBody.put("session", sessionDto);
+            responseBody.put("timeLeft", response.timeLeft().toString());
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
         else
             return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
+    @ResponseBody
     @PostMapping("/rejoin") // https://<SiteName>/sessions/rejoin
     public ResponseEntity<JoinResponse> rejoinSession(@RequestHeader("Authorization") String auth) {
         String token = auth.replace("Bearer ", "");
         JoinResponse response = sessionService.rejoinSession(token);
-        if (response.success())
-            return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
+        if (response.success()){
+            Session session = response.session();
+            
+            List<String> userNames = session.getUsers().stream()
+                    .map(Users::getUsername).toList();
+            List<String> fileNames = session.getFiles().stream()
+                    .map(Files::getFileName).toList();
+
+            Map<String, Object> sessionDto = new HashMap<>();
+            sessionDto.put("sessionId", session.getSessionId());
+            sessionDto.put("password", session.getPassword());
+            sessionDto.put("expiresAt", session.getExpiresAt().toString());
+            sessionDto.put("users", userNames);
+            sessionDto.put("files", fileNames);
+
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("success", true);
+            responseBody.put("sucess", true);
+            responseBody.put("Token", response.token());
+            responseBody.put("session", sessionDto);
+            responseBody.put("timeLeft", response.timeLeft().toString());
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
         else
             return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }

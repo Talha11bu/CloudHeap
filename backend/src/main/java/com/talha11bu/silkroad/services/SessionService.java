@@ -14,8 +14,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -41,21 +43,20 @@ public class SessionService {
         try {
             String newSessionId = idGenerator.generatedId();
 
-            LocalDateTime timeStamp = LocalDateTime.now(ZoneOffset.UTC).plus(request.duration());
+            var expiration = Instant.now().plus(request.duration());
 
-            Session newSession = new Session(newSessionId, request.password(), timeStamp);
+            Session newSession = new Session(newSessionId, request.password(), expiration);
             Session savedSession = sessionRepo.save(newSession);
-            Users initialUser = new Users(request.username(), savedSession);
+            String token = jwtTokenService.generateToken(savedSession.getSessionId(), request.username());
+            Users initialUser = new Users(request.username(), token, "/topic/session/" + savedSession.getSessionId(), savedSession);
 
             userRepo.save(initialUser);
-
-            String token = jwtTokenService.generateToken(request.sessionId(), request.username());
 
             return new CreateResponse(true, savedSession.getSessionId(), request.username(),savedSession.getPassword(),
                     token, request.duration());
         } catch (Exception e) {
             System.out.println(e.getMessage());
-            return new CreateResponse(false, null, null, null, null);
+            return new CreateResponse(false, null, null, null, null, null);
         }
     }
 
@@ -70,7 +71,8 @@ public class SessionService {
                 return new JoinResponse(false, null, null, null);
             }
 
-            Users newUsers = new Users(request.username(), session);
+            var token = jwtTokenService.generateToken(request.sessionId(), request.username());
+            Users newUsers = new Users(request.username(), token, "/topic/session/" + request.sessionId() ,session);
             userRepo.save(newUsers);
 
             SessionNotiff joinNotification = new SessionNotiff(SessionNotiff.NotifyType.USER_JOINED,
@@ -80,13 +82,13 @@ public class SessionService {
 
             notiffService.notifySessionMembers(session.getSessionId(), joinNotification);
 
-            Duration timeLeft = Duration.between(LocalDateTime.now(), session.getExpiresAt());
+            Duration timeLeft = Duration.between(Instant.now(), session.getExpiresAt());
 
             if (timeLeft.isNegative()) {
                 return new JoinResponse(false, null, null, null);
             }
 
-            return new JoinResponse(true, jwtTokenService.generateToken(request.sessionId(), request.username()),
+            return new JoinResponse(true, token,
                     responseSession, timeLeft);
 
         } catch (Exception e) {
@@ -97,11 +99,11 @@ public class SessionService {
     public JoinResponse rejoinSession(String token) {
         Claims claims = jwtTokenService.validateAndParseToken(token);
         String sessionId = claims.get("sid", String.class);
-        // String name = claims.getSubject();
+        String name = claims.getSubject();
 
         try {
             Session session = sessionRepo.findById(sessionId).orElseThrow();
-            Duration timeLeft = Duration.between(LocalDateTime.now(), session.getExpiresAt());
+            Duration timeLeft = Duration.between(Instant.now(), session.getExpiresAt());
 
             return new JoinResponse(true, token, session, timeLeft);
         } catch (Exception e) {
@@ -245,7 +247,7 @@ public class SessionService {
         notiffService.notifySessionMembers(sessionId, deletionNotiff);
     }
 
-    @Scheduled(cron = "0 * * * * *") // runs every minute
+    @Scheduled(cron = "* 5 * * * *") // runs every 5 minutes
     @Transactional
     public void cleanupExpiredSessions() {
 
@@ -253,29 +255,28 @@ public class SessionService {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        var now = Instant.now();
 
         List<Session> expiredByTime = sessionRepo.findByExpiresAtBefore(now);
 
-        List<Session> expiredByEmpty = sessionRepo.findEmptySessions();
+        Instant graceTime = now.minus(2, ChronoUnit.MINUTES).atZone(ZoneOffset.systemDefault())
+                .withZoneSameInstant(ZoneId.of("UTC")).toInstant();
+        List<Session> expiredByEmpty = sessionRepo.findAbandonedSessions(graceTime);
 
-        List<Session> expiredSessions = new ArrayList<>(expiredByTime.stream()
-                .filter(s -> expiredByEmpty.stream().noneMatch(e -> e.getSessionId().equals(s.getSessionId())))
-                .toList());
-        expiredSessions.addAll(expiredByEmpty);
+        Set<Session> sessionsToDelete = new HashSet<>(expiredByTime);
 
-        if (expiredSessions.isEmpty()) {
+        if (sessionsToDelete.isEmpty()) {
             return;
         }
 
-        Collection<String> keysToDelete = expiredSessions.stream().flatMap(session -> session.getFiles().stream())
+        Collection<String> keysToDelete = sessionsToDelete.stream().flatMap(session -> session.getFiles().stream())
                 .map(Files::getR2Key).toList();
 
         try {
             if (!keysToDelete.isEmpty())
                 r2Service.deleteFiles(keysToDelete);
 
-            sessionRepo.deleteAll(expiredSessions);
+            sessionRepo.deleteAll(sessionsToDelete);
         } catch (Exception e) {
             System.err.println("CRITICAL: Failed to complete session cleanup transaction. R2 or DB deletion failed: "
                     + e.getMessage());

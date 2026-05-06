@@ -26,14 +26,11 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
         
         // 1. Extract token from query param: ws://localhost:8080/ws?token=xxxx
-        String token = UriComponentsBuilder.fromUri(request.getURI())
-                .build()
-                .getQueryParams()
-                .getFirst("token");
+        String query = request.getURI().getQuery();
+        String token = null;
 
-        if (token == null) {
-            response.setStatusCode(HttpStatus.UNAUTHORIZED);
-            return false;
+        if (query != null && query.contains("token=")) {
+            token = query.split("token=")[1].split("&")[0];
         }
 
         try {

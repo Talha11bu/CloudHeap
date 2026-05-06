@@ -1,5 +1,4 @@
 package com.talha11bu.silkroad.config;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -23,9 +22,7 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:5173") // frontend URL
-                .addInterceptors(jwtHandshakeInterceptor)
-                .withSockJS();
+                .setAllowedOrigins("http://localhost:5173");
     }
 
 }

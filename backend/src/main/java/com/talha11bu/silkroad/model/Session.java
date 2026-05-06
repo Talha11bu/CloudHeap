@@ -4,16 +4,12 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 
 @Entity
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class Session {
 
     @Id
@@ -21,8 +17,11 @@ public class Session {
 
     private String password;
 
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
     @Column(nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @ToString.Exclude
     @JsonIgnoreProperties("session")
@@ -34,24 +33,46 @@ public class Session {
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Files> files = new ArrayList<>();
 
-    public Session(String sessionId, String password, LocalDateTime expiresAt) {
+    public Session() {}
+
+    public Session(String sessionId, String password, Instant expiresAt) {
         this.sessionId = sessionId;
         this.password = password;
         this.expiresAt = expiresAt;
     }
 
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+    }
+
     public String getSessionId() {
         return sessionId;
     }
-    public LocalDateTime getExpiresAt() {
+
+    public Instant getExpiresAt() {
         return expiresAt;
     }
     public String getPassword(){
         return password;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public List<Users> getUsers() {
+        return users;
+    }
+
+    public List<Files> getFiles() {
+        return files;
+    }
+
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(this.expiresAt);
+        return Instant.now().isAfter(this.expiresAt);
     }
 }
 

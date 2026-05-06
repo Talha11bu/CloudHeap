@@ -30,8 +30,10 @@ public class Users {
     @JoinColumn(name = "SessionID", nullable = false)
     private Session session;
 
-    public Users(String username, Session session) {
+    public Users(String username, String token, String webSocketId, Session session) {
         this.username = username;
+        this.token = token;
+        this.webSocketId = webSocketId;
         this.session = session;
     }
 }
