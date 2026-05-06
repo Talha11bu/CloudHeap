@@ -1,22 +1,28 @@
-import { useAuthStore } from './store/useAuthStore';
-import HomePage from './components/HomePage';
-import Navbar from './components/HomePage/NavBar';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HomePage } from './components/HomePage';
+import { SessionPage } from './components/SessionPage';
+import { AuthModal } from './components/AuthModal';
+import { useState } from 'react';
 import './index.css';
 
-function App() {
-	const { token } = useAuthStore();
+export default function App() {
+	const [isModalOpen, setIsModalOpen] = useState(false);
 
 	return (
-		<div className='bg-neutral-950 min-h-screen text-neutral-100 font-sans selection:bg-emerald-500/30'>
-			<div className='bg-glow' />
-			<Navbar />
-			{!token ? (
-				<HomePage />
-			) : (
-				<div className='p-20 text-center'>Session Page Placeholder</div>
-			)}
-		</div>
+		<BrowserRouter>
+			<div className='min-h-screen bg-[#050505] text-white relative overflow-hidden'>
+				<div className='fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.03)_0%,transparent_80%)]' />
+
+				<Routes>
+					<Route
+						path='/'
+						element={<HomePage onGetStarted={() => setIsModalOpen(true)} />}
+					/>
+					<Route path='/session' element={<SessionPage />} />
+				</Routes>
+
+				{isModalOpen && <AuthModal onClose={() => setIsModalOpen(false)} />}
+			</div>
+		</BrowserRouter>
 	);
 }
-
-export default App;

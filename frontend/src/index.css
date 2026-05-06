@@ -1,9 +1,15 @@
 @import 'tailwindcss';
 
-html {
+html,
+body,
+#root {
+	background-color: #050505;
 	scroll-behavior: smooth;
+	color: white;
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
 }
-
 .bg-glow {
 	position: fixed;
 	top: 50%;

@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { AuthModal } from './HomePage/AuthModal';
+import { AuthModal } from './AuthModal';
 import { TechStack } from './HomePage/TechStack';
 import { About } from './HomePage/About';
 import { Features } from './HomePage/Features';
 import { FooterSection } from './HomePage/FooterSection';
+import Navbar from './HomePage/NavBar';
 
-const HomePage = () => {
+export const HomePage = () => {
 	const [showModal, setShowModal] = useState(false);
 
 	return (
 		<div className='relative min-h-screen'>
 			<div className='fixed inset-0 -z-10 bg-[radial-gradient(#ffffff10_1px,transparent_1px)] bg-size-[40px_40px] mask-[radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]' />
 
+			<Navbar/>
 			<section className='max-w-5xl mx-auto px-6 pt-32 pb-16 text-center'>
 				<div className='inline-flex items-center gap-3 px-4 py-2 rounded-full border border-emerald-500/10 bg-emerald-500/5 text-emerald-500 text-[11px] font-mono mb-10 uppercase tracking-[0.2em]'>
 					<span className='relative flex h-2 w-2'>
@@ -54,5 +56,3 @@ const HomePage = () => {
 		</div>
 	);
 };
-
-export default HomePage;
