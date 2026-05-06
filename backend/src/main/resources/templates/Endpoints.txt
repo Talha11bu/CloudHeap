@@ -1,0 +1,26 @@
+API endpoint 									                            | Expected to be sent by client				                    | sent back from the server
+POST https://<SiteName>/sessions/create						                | {"username": "", "passowrd":"", "duration":"Java Duration"}	|{"sucess":true or false, "sessionId":"", "passowrd:"", "duaration":"Java Duration"}
+POST https://<SiteName>/sessions/join						                | {"sessionId":"", "passsword":"", "username":""}		        |{"sucess":true or false, "Token":"", session{"sessionId":"", "password":"", "expiresAt":"", users["","",""], files["","",""]}, "timeLeft":"Java Duration"}
+POST https://<SiteName>/sessions/rejoin						                | RequestHeader:"Authorization" & The Jwt token 	            |{"sucess":true orfalse, "Token":"", session{"sessionId":"", "password":"", "expiresAt":"", users["","",""], files["","",""]}, "timeLeft":"Java Duration"}
+POST https://<SiteName>/sessions/{sessionId}/uplaod?file={file}			    | {"sessionId":"", "password":"", "file":}			            |{"fileName":"", "fileType":"", "fileSize":""} 
+GET https://<SiteName>/sessions/{sessionId}/files/{fileName}/donwload-url	| Path variables					                            | url:"download-url"
+GET  https://<site-name>/sessions/{sessionId}/files/zip				        | request parameter password				                    | zip to be downloaded
+DELELT https://<site-name>/sessions/{sessionId}/leave				        | Path Variable sessionId and Request Param username	        | Http Ok
+DELETE https://<SiteName>/sessions/{sessionId}/file?fileName={filename}		| Path varibale sessionId and Request Param fileName	        | Http Ok
+DELETE /https://<SiteName>/sessions/{sessionId}					            | Path Variable sessionId and Request Param Username	        | 
+
+Websocket Enpoint to subscribe to every client 
+https:/<SiteName>/ws
+
+Subscription Destination
+
+/topic/sessions/{sessionId} 
+
+{"type": "USER_JOINED", "sessionId": "abc-123", "payload": "username"}
+{"type": "USER_LEFT","sessionId": "abc-123","payload": "username"}
+{"type": "FILE_UPLOADED","sessionId": "abc-123","payload": "filename"}
+{"type": "FILE_DELETED","sessionId": "abc-123","payload": "filename"}
+
+and when session ends we get:
+ 
+"Session {sessionId} has been successfully ended. All associated files have been deleted." 

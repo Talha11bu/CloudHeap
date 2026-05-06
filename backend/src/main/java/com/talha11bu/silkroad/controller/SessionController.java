@@ -24,6 +24,7 @@ public class SessionController {
 
     @PostMapping("/create")//https://<SiteName>/sessions/create
     public ResponseEntity<CreateResponse> createSession(@RequestBody CreateRequest createRequest) {
+
         CreateResponse response = sessionService.createSession(createRequest);
         if (response.success())
             return new ResponseEntity<>(response, HttpStatus.CREATED);
@@ -41,7 +42,7 @@ public class SessionController {
             return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
-    @PostMapping("/rejoin")
+    @PostMapping("/rejoin") // https://<SiteName>/sessions/rejoin
     public ResponseEntity<JoinResponse> rejoinSession(@RequestHeader("Authorization") String auth) {
         String token = auth.replace("Bearer ", "");
         JoinResponse response = sessionService.rejoinSession(token);
@@ -88,7 +89,7 @@ public class SessionController {
         }
     }
 
-    @GetMapping("/{sessionId}/files/{fileName}/download-url")
+    @GetMapping("/{sessionId}/files/{fileName}/download-url") // https://<site-name>/sessions/{sessionId}/files/{fileName}/download-url
     public ResponseEntity<?> getFileDownloadUrl(@PathVariable String sessionId, @PathVariable String fileName,
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
 
@@ -108,7 +109,7 @@ public class SessionController {
         }
     }
 
-    @GetMapping("/{sessionId}/files/zip")
+    @GetMapping("/{sessionId}/files/zip") // https://<site-name>/sessions/{sessionId}/files/zip
     public ResponseEntity<Resource> downloadAllFilesAsZip(@PathVariable String sessionId, @RequestParam String password){
         try{
             Resource zipResource = sessionService.downloadAllFilesAsZip(sessionId, password);

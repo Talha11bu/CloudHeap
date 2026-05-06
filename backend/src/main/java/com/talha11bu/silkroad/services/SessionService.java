@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 
 @Service
@@ -40,7 +41,7 @@ public class SessionService {
         try {
             String newSessionId = idGenerator.generatedId();
 
-            LocalDateTime timeStamp = LocalDateTime.now().plusMinutes(request.duration());
+            LocalDateTime timeStamp = LocalDateTime.now(ZoneOffset.UTC).plus(request.duration());
 
             Session newSession = new Session(newSessionId, request.password(), timeStamp);
             Session savedSession = sessionRepo.save(newSession);
@@ -48,8 +49,8 @@ public class SessionService {
 
             userRepo.save(initialUser);
 
-            Duration duration = Duration.between(LocalDateTime.now(), savedSession.getExpiresAt());
-            return new CreateResponse(true, savedSession.getSessionId(), savedSession.getPassword(), duration);
+            return new CreateResponse(true, savedSession.getSessionId(), savedSession.getPassword(),
+                    request.duration());
         } catch (Exception e) {
             System.out.println(e.getMessage());
             return new CreateResponse(false, null, null, null);
@@ -78,6 +79,10 @@ public class SessionService {
             notiffService.notifySessionMembers(session.getSessionId(), joinNotification);
 
             Duration timeLeft = Duration.between(LocalDateTime.now(), session.getExpiresAt());
+
+            if (timeLeft.isNegative()) {
+                return new JoinResponse(false, null, null, null);
+            }
 
             return new JoinResponse(true, jwtTokenService.generateToken(request.sessionId(), request.username()),
                     responseSession, timeLeft);
