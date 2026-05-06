@@ -49,11 +49,13 @@ public class SessionService {
 
             userRepo.save(initialUser);
 
-            return new CreateResponse(true, savedSession.getSessionId(), savedSession.getPassword(),
-                    request.duration());
+            String token = jwtTokenService.generateToken(request.sessionId(), request.username());
+
+            return new CreateResponse(true, savedSession.getSessionId(), request.username(),savedSession.getPassword(),
+                    token, request.duration());
         } catch (Exception e) {
             System.out.println(e.getMessage());
-            return new CreateResponse(false, null, null, null);
+            return new CreateResponse(false, null, null, null, null);
         }
     }
 

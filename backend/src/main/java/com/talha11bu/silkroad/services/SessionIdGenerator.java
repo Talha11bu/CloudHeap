@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 public class SessionIdGenerator {
 
     public String generatedId() {
-        String seed = "!@#$%^&*_-?>:~+=QWERTYUIOPASDFGHJKLZXCVBNMabcdefghijklmnopqrstuvwxyz0987654321";
+        String seed = "QWERTYUIOPASDFGHJKLZXCVBNM!@#$%^&*?:~-+=abcdefghijklmnopqrstuvwxyz0987654321";
         StringBuilder token = new StringBuilder();
         for(int i = 0; i < 6 ; i++){
             token.append(seed.charAt((int) Math.floor(Math.random()*seed.length())));
