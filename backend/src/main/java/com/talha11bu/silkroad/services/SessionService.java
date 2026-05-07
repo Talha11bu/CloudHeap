@@ -155,15 +155,15 @@ public class SessionService {
     public String getPreSignedUrlForFile(String sessionId, String fileName, String token) {
         // 1. Verify the user is authenticated for this specific session
         Claims claims = jwtTokenService.validateAndParseToken(token);
-        String tokenSessionId = claims.get("sid", String.class);
+        String tokenSessionId = claims.get("sessionId", String.class);
 
-        if (!tokenSessionId.equals(sessionId)) {
+        if (tokenSessionId == null || !tokenSessionId.equals(sessionId)) {
             throw new SecurityException("You do not have access to this session's files.");
         }
         try {
             Files file = filesRepo.findByFileNameAndSessionSessionId(fileName, sessionId).orElseThrow();
 
-            return r2Service.generatePreSignedDownloadUrl(file.getR2Key());
+            return r2Service.generatePreSignedDownloadUrl(file.getR2Key(), file.getFileName());
         } catch (Exception e) {
             return null;
         }

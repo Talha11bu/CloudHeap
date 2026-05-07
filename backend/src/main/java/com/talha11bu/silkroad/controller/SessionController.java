@@ -36,7 +36,7 @@ public class SessionController {
 
     @ResponseBody
     @PostMapping("/join")//https://<SiteName>/sessions/join
-    public ResponseEntity<JoinResponse> joinSession(@RequestBody JoinRequest joinRequest) {
+    public ResponseEntity<?> joinSession(@RequestBody JoinRequest joinRequest) {
         JoinResponse response = sessionService.joinSession(joinRequest);
 
         if (response.success()){
@@ -66,12 +66,12 @@ public class SessionController {
             return new ResponseEntity<>(responseBody, HttpStatus.OK);
         }
         else
-            return new ResponseEntity<>(responseBody, HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @ResponseBody
     @PostMapping("/rejoin") // https://<SiteName>/sessions/rejoin
-    public ResponseEntity<JoinResponse> rejoinSession(@RequestHeader("Authorization") String auth) {
+    public ResponseEntity<?> rejoinSession(@RequestHeader("Authorization") String auth) {
         String token = auth.replace("Bearer ", "");
         JoinResponse response = sessionService.rejoinSession(token);
         if (response.success()){
@@ -99,7 +99,7 @@ public class SessionController {
             return new ResponseEntity<>(responseBody, HttpStatus.OK);
         }
         else
-            return new ResponseEntity<>(responseBody, HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @PostMapping("/{sessionId}/upload")//https://<SiteName>/sessions/{sessionId}/upload?file={file}
@@ -110,8 +110,9 @@ public class SessionController {
 
             UploadResponse fileInfo = sessionService.uploadFile(sessionId, file);
 
-            return new ResponseEntity<>(fileInfo, HttpStatus.ACCEPTED);
+            return new ResponseEntity<>(fileInfo, HttpStatus.OK);
         } catch (RuntimeException e) {
+            e.printStackTrace();
             if (e.getMessage().contains("not found")) {
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
@@ -151,6 +152,11 @@ public class SessionController {
 
         try {
             String downloadUrl = sessionService.getPreSignedUrlForFile(sessionId, fileName, token);
+            
+            if(downloadUrl == null){
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate download link");
+            }
+
             return ResponseEntity.ok(Map.of("url", downloadUrl));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
@@ -168,7 +174,7 @@ public class SessionController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("application/zip"))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename\"" + zipFileName + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipFileName + "\"")
                     .body(zipResource);
         } catch (SecurityException e) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);

@@ -26,7 +26,9 @@ public class JwtTokenService {
 	}
 
 	public String generateToken(String sessionId, String displayName) {
-		return Jwts.builder().setSubject(displayName).claim("sessionId", sessionId)
+		return Jwts.builder()
+                .setSubject(displayName)
+                .claim("sessionId", sessionId)
 				.setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis() + expirationMs))
 				.signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();

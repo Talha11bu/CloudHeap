@@ -72,11 +72,15 @@ public class R2Service {
         }
     }
 
-    public String generatePreSignedDownloadUrl(String objectKey) {
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(objectKey).build();
+    public String generatePreSignedDownloadUrl(String objectKey, String fileName) {
+        var getObjectRequest = GetObjectRequest.builder()
+                                               .bucket(bucketName)
+                                               .key(objectKey)
+                                               .responseContentDisposition("attachment; filename=\""+fileName+"\"")
+                                               .build();
 
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(15)).getObjectRequest(getObjectRequest).build();
+                .signatureDuration(Duration.ofMinutes(5)).getObjectRequest(getObjectRequest).build();
 
         PresignedGetObjectRequest presignedRequest = r2Presigner.presignGetObject(presignRequest);
 
