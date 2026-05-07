@@ -12,8 +12,8 @@ export const HomePage = () => {
 
 	return (
 		<div className='relative min-h-screen'>
+			
 			<div className='fixed inset-0 -z-10 bg-[radial-gradient(#ffffff10_1px,transparent_1px)] bg-size-[40px_40px] mask-[radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]' />
-
 			<Navbar/>
 			<section className='max-w-5xl mx-auto px-6 pt-32 pb-16 text-center'>
 				<div className='inline-flex items-center gap-3 px-4 py-2 rounded-full border border-emerald-500/10 bg-emerald-500/5 text-emerald-500 text-[11px] font-mono mb-10 uppercase tracking-[0.2em]'>
@@ -24,14 +24,14 @@ export const HomePage = () => {
 					Protocol Active: v1.0
 				</div>
 
-				<h1 className='text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] text-white'>
+				<h1 className='text-4xl md:text-6xl lg:text-8xl leading-tight text-center px-4 md:px-0 font-black tracking-tighter mb-8 text-white'>
 					TRANSFER DATA <br />
 					<span className='text-neutral-500 italic font-light'>
 						WITHOUT A TRACE.
 					</span>
 				</h1>
 
-				<p className='max-w-xl mx-auto text-neutral-400 text-base md:text-lg mb-12 font-mono leading-relaxed opacity-80'>
+				<p className='max-w-xl mx-auto text-neutral-400 text-sm md:text-lg mb-12 font-mono leading-relaxed opacity-80'>
 					Silk Road creates ephemeral, encrypted tunnels for file exchange. No
 					storage logs. No persistence. Pure data flow.
 				</p>

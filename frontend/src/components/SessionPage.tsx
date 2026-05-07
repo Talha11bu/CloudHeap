@@ -3,9 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Terminal, Users, X, AlertTriangle, Copy, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CountdownTimer } from './SessionPage/CountDownTimer'; 
+import { FilePanel } from './SessionPage/FilePanel';
 import { Client } from '@stomp/stompjs'; 
 
 const WS_BASE = 'ws://localhost:8080/ws';
+const API_BASE = 'http://localhost:8080';
 
 interface SessionData {
 	sucess?: boolean;
@@ -32,8 +34,10 @@ export const SessionPage = () => {
 	const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 	const [isExpiredModalOpen, setIsExpiredModalOpen] = useState(false);
 	const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+	const [isExitModalOpen, setIsExitModalOpen] = useState(false);
 	
 	const [users, setUsers] = useState<string[]>([]);
+	const [files, setFiles] = useState<string[]>([]);
 	const [copiedField, setCopiedField] = useState<string | null>(null);
 
 	const stompClient = useRef<Client | null>(null);
@@ -48,6 +52,7 @@ export const SessionPage = () => {
 
 		setSessionData(data);
 		setUsers(data.session.users || []); 
+		setFiles(data.session.files || []);
 		
 	}, [location.state]);
 
@@ -66,7 +71,6 @@ export const SessionPage = () => {
 			onConnect: () => {
 				console.log("WebSocket Connected!");
 				
-				// 🚀 NOTE: Using the singular '/topic/session/' as discovered in your backend logs
 				client.subscribe(`/topic/session/${sessionId}`, (message) => {
 					
 					// Check for raw text termination message
@@ -79,15 +83,17 @@ export const SessionPage = () => {
 					try {
 						const data = JSON.parse(message.body);
 						
-						// Handle incoming events from Spring Boot
 						if (data.type === 'USER_JOINED') {
-							// Use Set to prevent duplicate names in the UI
 							setUsers(prev => [...new Set([...prev, data.payload])]);
 						} 
 						else if (data.type === 'USER_LEFT') {
 							setUsers(prev => prev.filter(u => u !== data.payload));
 						}
-						// You can add FILE_UPLOADED / FILE_DELETED cases here later
+						else if (data.type === 'FILE_UPLOADED') {
+							setFiles(prev => [...new Set([...prev, data.payload])]);
+						} else if (data.type === 'FILE_DELETED') {
+							setFiles(prev => prev.filter(f => f !== data.payload));
+						}
 						
 					} catch (e) {
 						console.error("Failed to parse WebSocket message:", message.body);
@@ -108,9 +114,8 @@ export const SessionPage = () => {
 				stompClient.current.deactivate();
 			}
 		};
-	}, [sessionData?.session?.sessionId]); // Re-run if session ID changes
+	}, [sessionData?.session?.sessionId]);
 
-	// Helpers
 	const copyToClipboard = (text: string, field: string) => {
 		navigator.clipboard.writeText(text);
 		setCopiedField(field);
@@ -119,8 +124,33 @@ export const SessionPage = () => {
 
 	const returnToBase = () => {
 		localStorage.removeItem('silk_road_jwt');
-		if (stompClient.current) stompClient.current.deactivate(); // Kill connection on exit
+		if (stompClient.current) stompClient.current.deactivate();
 		navigate('/');
+	};
+
+	const isHost = sessionData?.clientUsername === sessionData?.session?.users?.[0];
+
+	// Handles routing to the correct Spring Boot endpoint
+	const handleExitSession = async () => {
+		if (!sessionData) return;
+		
+		const sessionId = sessionData.session.sessionId;
+		const username = sessionData.clientUsername;
+		
+		try {
+			// Host triggers the full session purge, Joiner just leaves
+			const endpoint = isHost 
+				? `${API_BASE}/sessions/${sessionId}?username=${username}`
+				: `${API_BASE}/sessions/${sessionId}/leave?username=${username}`;
+
+			await fetch(endpoint, { method: 'DELETE' });
+			
+		} catch (error) {
+			console.error("Error communicating exit to server:", error);
+		} finally {
+			// Always clean up locally even if the server request drops
+			returnToBase();
+		}
 	};
 
 	// --- MODALS ---
@@ -163,7 +193,47 @@ export const SessionPage = () => {
 
 	// --- MAIN UI RENDER ---
 	return (
-		<div className="h-screen bg-[#050505] text-white overflow-hidden flex flex-col md:flex-row relative">
+		<div className="min-h-screen md:h-screen bg-[#050505] text-white flex flex-col md:flex-row overflow-x-hidden">
+
+			<AnimatePresence>
+				{isExitModalOpen && (
+					<motion.div 
+						initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+						className="absolute inset-0 z-100 bg-black/5 backdrop-blur-sm flex items-center justify-center p-4"
+					>
+						<motion.div 
+							initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }}
+							className="bg-neutral-900 border border-white/10 p-8 rounded-2xl max-w-sm w-full text-center space-y-6 shadow-2xl"
+						>
+							<AlertTriangle className="text-red-500 mx-auto" size={48} />
+							<div>
+								<h2 className="text-white font-black uppercase tracking-widest text-lg">
+									{isHost ? 'Terminate Session?' : 'Disconnect?'}
+								</h2>
+								<p className="text-neutral-400 font-mono text-xs mt-2 leading-relaxed">
+									{isHost 
+										? 'WARNING: This will immediately collapse the tunnel and permanently purge all files for all connected agents.' 
+										: 'You are about to disconnect from the secure tunnel. You will need the Access Key to rejoin.'}
+								</p>
+							</div>
+							<div className="flex gap-4">
+								<button 
+									onClick={() => setIsExitModalOpen(false)}
+									className="flex-1 py-3 bg-white/5 border border-white/10 rounded-lg text-white font-mono text-xs hover:bg-white/10 transition-colors uppercase tracking-widest"
+								>
+									Cancel
+								</button>
+								<button 
+									onClick={handleExitSession} 
+									className="flex-1 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 font-bold font-mono text-xs hover:bg-red-500 hover:text-black transition-colors uppercase tracking-widest"
+								>
+									{isHost ? 'Terminate' : 'Leave'}
+								</button>
+							</div>
+						</motion.div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 			
 			{/* MOBILE HEADER: Logo & Drawer Toggle */}
 			<div className="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-black/50 backdrop-blur-md z-20">
@@ -180,18 +250,27 @@ export const SessionPage = () => {
 			<div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-white/10 bg-black/30 flex flex-col p-6 overflow-y-auto">
 				
 				{/* Desktop Only Header */}
-				<div className="hidden md:flex items-center gap-2 mb-8">
+				<div className="hidden md:flex items-center gap-2 mb-8 shrink-0">
 					<Terminal size={24} className="text-emerald-500" />
 					<span className="font-bold tracking-widest text-lg uppercase">Silk Road</span>
 				</div>
 
-				{/* Timer Component */}
-				<div className="mb-8">
+				{/* Timer & Exit Button Row */}
+				<div className="flex items-center gap-3 mb-6 shrink-0">
 					<CountdownTimer 
 						expiresAt={sessionData.session?.expiresAt} 
 						durationStr={sessionData.timeLeft || sessionData.duration} 
 						onExpire={() => setIsExpiredModalOpen(true)} 
 					/>
+					
+					{/* UI FIX: flex-1 ensures it only takes remaining space next to the timer, max-w-[120px] keeps it from looking absurdly long */}
+					<button 
+						onClick={() => setIsExitModalOpen(true)}
+						className="flex-1 max-w-30 flex items-center justify-center gap-2 py-2 px-2 bg-red-500/10 border border-red-500/30 text-red-500 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-red-500 hover:text-black transition-colors"
+					>
+						<X size={16} />
+						{isHost ? 'End' : 'Leave'}
+					</button>
 				</div>
 
 				{/* Session Info */}
@@ -219,7 +298,7 @@ export const SessionPage = () => {
 					</div>
 
 				{/* Desktop Users List (Hidden on Mobile) */}
-				<div className="hidden md:flex flex-col flex-1">
+				<div className="hidden md:flex flex-col flex-1 min-h-0">
 					<p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-4 border-b border-white/10 pb-2 flex items-center justify-between">
 						<span>Connected Agents</span>
 						<span className="bg-emerald-500/20 text-emerald-500 px-2 py-0.5 rounded text-[10px]">{users.length}</span>
@@ -236,13 +315,12 @@ export const SessionPage = () => {
 			</div>
 
 			{/* RIGHT COLUMN: Upload Area */}
-			<div className="flex-1 flex flex-col items-center justify-center p-6 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.03)_0%,transparent_60%)] relative">
-				{/* Empty placeholder for now */}
-				<div className="border-2 border-dashed border-white/10 rounded-3xl w-full max-w-2xl h-96 flex flex-col items-center justify-center text-neutral-600">
-					<Terminal size={48} className="mb-4 opacity-20" />
-					<p className="font-mono text-sm uppercase tracking-widest">Awaiting Upload Sequence</p>
-					<p className="font-mono text-[10px] uppercase tracking-widest mt-2 opacity-50">[ Upload Module Pending ]</p>
-				</div>
+			<div className="flex-1 w-full md:h-screen md:overflow-y-auto bg-[#050505] flex flex-col">
+				<FilePanel 
+					sessionId={sessionData.session.sessionId}
+					password={sessionData.session.password}
+					files={files}
+				/>
 			</div>
 
 			{/* MOBILE DRAWER: Discord Style Slide-in */}

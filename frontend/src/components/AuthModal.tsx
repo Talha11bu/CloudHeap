@@ -149,7 +149,7 @@ export const AuthModal = ({ onClose }: { onClose: () => void }) => {
 	};
 
 	return (
-		<div className='fixed inset-0 z-200 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4'>
+		<div className='fixed inset-0 z-200 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 mx-0.5'>
 			<div className='relative bg-neutral-950 border border-white/10 w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col md:flex-row min-h-125'>
 				{/* LOADING OVERLAY */}
 				<AnimatePresence>

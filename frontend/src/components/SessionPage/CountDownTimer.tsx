@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 
 interface CountdownTimerProps {
-	expiresAt?: string; // e.g., "2026-05-06T20:30:00Z"
-	durationStr?: string; // fallback if no expiresAt is found (e.g., "PT14M22S")
+	expiresAt?: string;
+	durationStr?: string; 
 	onExpire: () => void;
 }
 
@@ -18,7 +18,6 @@ const parseJavaDuration = (duration: string): number => {
 
 export const CountdownTimer = ({ expiresAt, durationStr, onExpire }: CountdownTimerProps) => {
 	
-	// 🚀 FIX: Calculate initial time based on absolute timestamp if available
 	const getInitialTime = () => {
 		if (expiresAt) {
 			const diffInSeconds = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000);
@@ -30,36 +29,30 @@ export const CountdownTimer = ({ expiresAt, durationStr, onExpire }: CountdownTi
 
 	const [timeLeft, setTimeLeft] = useState(getInitialTime);
 
+
+
+
 	useEffect(() => {
-		if (timeLeft <= 0) {
-			onExpire();
-			return;
-		}
+		if (timeLeft <= 0) return; // Stop ticking if we are already at 0
 
 		const interval = setInterval(() => {
 			setTimeLeft((prev) => {
-				// Resync with server expiration time every 10 ticks to prevent browser throttling drift
 				if (expiresAt && prev % 10 === 0) {
 					const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000);
-					if (diff <= 0) {
-						clearInterval(interval);
-						onExpire();
-						return 0;
-					}
-					return diff;
+					return Math.max(0, diff);
 				}
-
-				if (prev <= 1) {
-					clearInterval(interval);
-					onExpire();
-					return 0;
-				}
-				return prev - 1;
+				return Math.max(0, prev - 1);
 			});
 		}, 1000);
 
 		return () => clearInterval(interval);
-	}, [timeLeft, expiresAt, onExpire]);
+	}, [expiresAt]); 
+
+	useEffect(() => {
+		if (timeLeft === 0) {
+			onExpire();
+		}
+	}, [timeLeft, onExpire]);
 
 	const formatTime = (totalSeconds: number) => {
 		const h = Math.floor(totalSeconds / 3600);
@@ -72,13 +65,12 @@ export const CountdownTimer = ({ expiresAt, durationStr, onExpire }: CountdownTi
 	const isLowTime = timeLeft < 60 && timeLeft > 0;
 
 	return (
-		<div className={`flex items-center gap-3 p-4 rounded-xl border transition-colors ${
+		<div className={`w-fit flex items-center gap-2 px-4 py-2 rounded-full border transition-colors ${
 			isLowTime ? 'bg-red-500/10 border-red-500/30 text-red-500 animate-pulse' : 'bg-white/5 border-white/10 text-emerald-500'
 		}`}>
-			<Clock size={20} className={isLowTime ? 'text-red-500' : 'text-emerald-500'} />
-			<div>
-				<p className="text-[10px] uppercase tracking-widest text-neutral-500 mb-1">Time Remaining</p>
-				<p className="text-2xl font-black font-mono tracking-tighter leading-none">
+			<Clock size={16} className={isLowTime ? 'text-red-500' : 'text-emerald-500'} />
+			<div className="flex items-baseline gap-2">
+				<p className="text-lg font-black font-mono tracking-tighter leading-none">
 					{formatTime(timeLeft)}
 				</p>
 			</div>
