@@ -12,6 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -61,10 +63,10 @@ public class SessionController {
             responseBody.put("Token", response.token());
             responseBody.put("session", sessionDto);
             responseBody.put("timeLeft", response.timeLeft().toString());
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return new ResponseEntity<>(responseBody, HttpStatus.OK);
         }
         else
-            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(responseBody, HttpStatus.NOT_FOUND);
     }
 
     @ResponseBody
@@ -94,10 +96,10 @@ public class SessionController {
             responseBody.put("session", sessionDto);
             responseBody.put("timeLeft", response.timeLeft().toString());
 
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            return new ResponseEntity<>(responseBody, HttpStatus.OK);
         }
         else
-            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(responseBody, HttpStatus.NOT_FOUND);
     }
 
     @PostMapping("/{sessionId}/upload")//https://<SiteName>/sessions/{sessionId}/upload?file={file}
