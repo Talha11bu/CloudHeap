@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@SuppressWarnings("unused") // Fields used by Spring context; test methods are commented out pending implementation
 class SessionControllerTest {
 
 	@Autowired

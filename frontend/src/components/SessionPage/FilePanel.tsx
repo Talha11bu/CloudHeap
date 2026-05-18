@@ -27,17 +27,54 @@ export const FilePanel = ({ sessionId, password, files }: FilePanelProps) => {
 		if (!selectedFile) return;
 
 		setIsUploading(true);
-		const formData = new FormData();
-		formData.append('file', selectedFile);
-		formData.append('sessionId', sessionId);
-		if (password) formData.append('password', password);
-
+		
 		try {
-			// Adjust spelling if your backend strictly requires 'uplaod'
-			await fetch(`${API_BASE}/sessions/${sessionId}/upload`, {
-				method: 'POST',
-				body: formData
+			const token = localStorage.getItem('silk_road_jwt');
+			if (!token) throw new Error("No authentication token found");
+
+			// 1. Get Pre-signed URL
+			const urlParams = new URLSearchParams({
+				fileName: selectedFile.name,
+				contentType: selectedFile.type || 'application/octet-stream'
 			});
+			
+			const presignedRes = await fetch(`${API_BASE}/sessions/${sessionId}/upload-url?${urlParams}`, {
+				method: 'GET',
+				headers: {
+					'Authorization': `Bearer ${token}`
+				}
+			});
+
+			if (!presignedRes.ok) throw new Error(`Failed to get upload URL: ${presignedRes.status}`);
+			const { url, fileKey } = await presignedRes.json();
+
+			// 2. Upload directly to R2
+			const uploadRes = await fetch(url, {
+				method: 'PUT',
+				body: selectedFile,
+				headers: {
+					'Content-Type': selectedFile.type || 'application/octet-stream'
+				}
+			});
+
+			if (!uploadRes.ok) throw new Error(`Failed to upload to R2: ${uploadRes.status}`);
+
+			// 3. Confirm Upload with Backend
+			const confirmRes = await fetch(`${API_BASE}/sessions/${sessionId}/upload-complete`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					fileName: selectedFile.name,
+					fileKey: fileKey,
+					fileSize: selectedFile.size
+				})
+			});
+
+			if (!confirmRes.ok) throw new Error(`Failed to confirm upload: ${confirmRes.status}`);
+
 			// Success! The WebSocket will broadcast the new file to everyone
 		} catch (error) {
 			console.error("Upload failed", error);

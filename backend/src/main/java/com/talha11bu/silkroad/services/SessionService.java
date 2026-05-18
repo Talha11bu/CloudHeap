@@ -48,11 +48,12 @@ public class SessionService {
             Session newSession = new Session(newSessionId, request.password(), expiration);
             Session savedSession = sessionRepo.save(newSession);
             String token = jwtTokenService.generateToken(savedSession.getSessionId(), request.username());
-            Users initialUser = new Users(request.username(), token, "/topic/session/" + savedSession.getSessionId(), savedSession);
+            Users initialUser = new Users(request.username(), token, "/topic/session/" + savedSession.getSessionId(),
+                    savedSession);
 
             userRepo.save(initialUser);
 
-            return new CreateResponse(true, savedSession.getSessionId(), request.username(),savedSession.getPassword(),
+            return new CreateResponse(true, savedSession.getSessionId(), request.username(), savedSession.getPassword(),
                     token, request.duration());
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -72,7 +73,7 @@ public class SessionService {
             }
 
             var token = jwtTokenService.generateToken(request.sessionId(), request.username());
-            Users newUsers = new Users(request.username(), token, "/topic/session/" + request.sessionId() ,session);
+            Users newUsers = new Users(request.username(), token, "/topic/session/" + request.sessionId(), session);
             userRepo.save(newUsers);
 
             SessionNotiff joinNotification = new SessionNotiff(SessionNotiff.NotifyType.USER_JOINED,
@@ -99,7 +100,6 @@ public class SessionService {
     public JoinResponse rejoinSession(String token) {
         Claims claims = jwtTokenService.validateAndParseToken(token);
         String sessionId = claims.get("sid", String.class);
-        String name = claims.getSubject();
 
         try {
             Session session = sessionRepo.findById(sessionId).orElseThrow();
@@ -111,25 +111,39 @@ public class SessionService {
         }
     }
 
+    public java.util.Map<String, String> getPreSignedUploadUrl(String sessionId, String fileName, String contentType, String token) {
+        Claims claims = jwtTokenService.validateAndParseToken(token);
+        String tokenSessionId = claims.get("sid", String.class);
+
+        if (tokenSessionId == null || !tokenSessionId.equals(sessionId)) {
+            throw new SecurityException("You do not have access to this session.");
+        }
+        
+        sessionRepo.findById(sessionId).orElseThrow(() -> new NoSuchElementException("Session not found."));
+
+        return r2Service.generatePreSignedUploadUrl(sessionId, fileName, contentType);
+    }
+
     @Transactional
-    public UploadResponse uploadFile(String sessionId, MultipartFile multipartFile) throws IOException {
-        Session session = sessionRepo.findById(sessionId).orElseThrow(() -> new RuntimeException("Session not found."));
-        try {
-            String r2Key = r2Service.uploadFile(multipartFile, sessionId);
+    public UploadResponse confirmFileUpload(String sessionId, String fileName, String fileKey, long fileSize, String token) {
+        Claims claims = jwtTokenService.validateAndParseToken(token);
+        String tokenSessionId = claims.get("sid", String.class);
 
-            Files newFileEntity = new Files(multipartFile.getOriginalFilename(), r2Key, session);
-
-            filesRepo.save(newFileEntity);
-        } catch (IOException e) {
-            throw new RuntimeException("R2 upload failed " + e.getMessage());
+        if (tokenSessionId == null || !tokenSessionId.equals(sessionId)) {
+            throw new SecurityException("You do not have access to this session.");
         }
 
-        SessionNotiff fileNotification = new SessionNotiff(SessionNotiff.NotifyType.FILE_UPLOADED, sessionId,
-                multipartFile.getOriginalFilename());
+        Session session = sessionRepo.findById(sessionId).orElseThrow(() -> new RuntimeException("Session not found."));
+        
+        // At this point, the file is assumed to be successfully uploaded to R2 by the client.
+        Files newFileEntity = new Files(fileName, fileKey, session);
+        filesRepo.save(newFileEntity);
+
+        SessionNotiff fileNotification = new SessionNotiff(SessionNotiff.NotifyType.FILE_UPLOADED, sessionId, fileName);
         notiffService.notifySessionMembers(sessionId, fileNotification);
 
-        return new UploadResponse(multipartFile.getOriginalFilename(), multipartFile.getContentType(),
-                multipartFile.getSize());
+        // ContentType isn't strictly necessary here, but we can return empty or derived if needed. We'll return empty string for now.
+        return new UploadResponse(fileName, "", fileSize);
     }
 
     public Resource downloadFile(String sessionId, String password, String filename) {
@@ -155,7 +169,7 @@ public class SessionService {
     public String getPreSignedUrlForFile(String sessionId, String fileName, String token) {
         // 1. Verify the user is authenticated for this specific session
         Claims claims = jwtTokenService.validateAndParseToken(token);
-        String tokenSessionId = claims.get("sessionId", String.class);
+        String tokenSessionId = claims.get("sid", String.class);
 
         if (tokenSessionId == null || !tokenSessionId.equals(sessionId)) {
             throw new SecurityException("You do not have access to this session's files.");
@@ -264,6 +278,7 @@ public class SessionService {
         List<Session> expiredByEmpty = sessionRepo.findAbandonedSessions(graceTime);
 
         Set<Session> sessionsToDelete = new HashSet<>(expiredByTime);
+        sessionsToDelete.addAll(expiredByEmpty);
 
         if (sessionsToDelete.isEmpty()) {
             return;

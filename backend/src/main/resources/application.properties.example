@@ -15,4 +15,3 @@ jwt.secret-key=<Generated 256bits/32Bytes Base64 encoded SSL String>
 
 spring.servlet.multipart.max-file-size=<Set Max File Size server can Recieve e.g. 250MB (megabytes)>
 spring.servlet.multipart.max-request-size=<Max request size, should be larger than File size e.g. 255MB>
-

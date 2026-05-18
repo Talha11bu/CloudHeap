@@ -14,10 +14,6 @@ java {
     }
 }
 
-dependencyLocking {
-    lockAllConfigurations()
-}
-
 configurations {
     compileOnly {
         extendsFrom(configurations.annotationProcessor.get())
@@ -36,6 +32,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
+
+    // OpenAPI / Swagger UI
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")
     
     // WebSockets (STOMP/SockJS)
     implementation("org.webjars:stomp-websocket:2.3.4")

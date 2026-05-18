@@ -12,6 +12,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
@@ -85,6 +87,28 @@ public class R2Service {
         PresignedGetObjectRequest presignedRequest = r2Presigner.presignGetObject(presignRequest);
 
         return presignedRequest.url().toString();
+    }
+
+    public java.util.Map<String, String> generatePreSignedUploadUrl(String sessionId, String originalFilename, String contentType) {
+        String fileKey = String.format("%s/%s-%s", sessionId, UUID.randomUUID(), originalFilename);
+        
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(fileKey)
+                .contentType(contentType)
+                .build();
+
+        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(15))
+                .putObjectRequest(putObjectRequest)
+                .build();
+
+        PresignedPutObjectRequest presignedRequest = r2Presigner.presignPutObject(presignRequest);
+
+        return java.util.Map.of(
+            "url", presignedRequest.url().toString(),
+            "fileKey", fileKey
+        );
     }
 
     public Resource donwloadFilesAsZip(List<String> r2Keys) throws IOException{

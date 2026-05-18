@@ -11,7 +11,6 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Map;
 
@@ -23,8 +22,8 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                                   WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
-        
+            WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
+
         // 1. Extract token from query param: ws://localhost:8080/ws?token=xxxx
         String query = request.getURI().getQuery();
         String token = null;
@@ -36,11 +35,11 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         try {
             // 2. Validate and Parse
             Claims claims = jwtTokenService.validateAndParseToken(token);
-            
+
             // 3. Store identity in session attributes for the DisconnectListener
             attributes.put("displayName", claims.getSubject());
             attributes.put("sessionId", claims.get("sessionId", String.class));
-            
+
             return true;
         } catch (Exception e) {
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
@@ -49,6 +48,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
     }
 
     @Override
-    public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response, 
-                               WebSocketHandler wsHandler, Exception exception) {}
+    public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
+            WebSocketHandler wsHandler, Exception exception) {
+    }
 }
