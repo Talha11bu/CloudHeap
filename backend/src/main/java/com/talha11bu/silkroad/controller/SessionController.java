@@ -24,6 +24,18 @@ import org.springframework.http.MediaType;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * REST controller exposing all session and file management endpoints.
+ *
+ * <p>Handles session lifecycle (create, join, rejoin, leave, end),
+ * file operations (upload, download, delete), and pre-signed URL generation.
+ * All endpoints are documented with Swagger annotations for interactive
+ * API exploration.</p>
+ *
+ * <p>Endpoints are mapped under {@code /sessions}.</p>
+ *
+ * @see com.talha11bu.silkroad.services.SessionService
+ */
 @RestController
 @RequestMapping("/sessions")
 public class SessionController {

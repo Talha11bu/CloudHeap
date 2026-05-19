@@ -8,6 +8,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Simple health check controller for the SilkRoad API.
+ *
+ * <p>Exposes an unauthenticated endpoint at {@code /sessions/health}
+ * that returns {@code "ALIVE"} to confirm the service is running.</p>
+ */
 @RestController
 @RequestMapping("/sessions")
 @Tag(name = "Health")

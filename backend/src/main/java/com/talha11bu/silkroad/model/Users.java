@@ -9,6 +9,13 @@ import lombok.Setter;
 import lombok.ToString;
 
 
+/**
+ * JPA entity representing a user participating in a session.
+ *
+ * <p>Each user is assigned a unique JWT token upon joining and is subscribed
+ * to a WebSocket topic for receiving real-time session events. The entity
+ * maintains a many-to-one relationship with its parent {@link Session}.</p>
+ */
 @Entity
 @Getter
 @Setter
@@ -37,6 +44,14 @@ public class Users {
     @Schema(hidden = true)
     private Session session;
 
+    /**
+     * Creates a new user within a session.
+     *
+     * @param username    the user's display name.
+     * @param token       the JWT token issued to this user.
+     * @param webSocketId the STOMP topic this user subscribes to (e.g., {@code /topic/session/SKR-7X9K2M}).
+     * @param session     the parent session this user belongs to.
+     */
     public Users(String username, String token, String webSocketId, Session session) {
         this.username = username;
         this.token = token;

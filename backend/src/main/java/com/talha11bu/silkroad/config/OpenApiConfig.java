@@ -13,9 +13,23 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
+/**
+ * OpenAPI / Swagger configuration for the SilkRoad REST API.
+ *
+ * <p>Defines the API metadata, server URLs, tag groupings, and the global
+ * JWT Bearer authentication scheme used by Swagger UI.</p>
+ *
+ * <p>Access the interactive documentation at
+ * {@code /swagger-ui/index.html} when the server is running.</p>
+ */
 @Configuration
 public class OpenApiConfig {
 
+    /**
+     * Builds the OpenAPI specification bean consumed by springdoc.
+     *
+     * @return a fully configured {@link OpenAPI} instance.
+     */
     @Bean
     public OpenAPI silkroadOpenAPI() {
         return new OpenAPI()

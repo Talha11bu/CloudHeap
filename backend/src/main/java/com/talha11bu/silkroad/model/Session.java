@@ -10,6 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+/**
+ * JPA entity representing an ephemeral file-sharing session.
+ *
+ * <p>A session is the core domain object in SilkRoad. It is identified by a short,
+ * human-readable ID (e.g., {@code SKR-7X9K2M}), protected by a password, and
+ * automatically expires after a configurable duration. It maintains bidirectional
+ * relationships with its {@link Users} and {@link Files}.</p>
+ *
+ * <p>Cascade deletion ensures that when a session is removed, all associated
+ * users and files are cleaned up from the database.</p>
+ */
 @Entity
 @Schema(description = "A temporary file-sharing session with password protection and auto-expiration")
 public class Session {
@@ -43,12 +54,23 @@ public class Session {
 
     public Session() {}
 
+    /**
+     * Creates a new session with the specified ID, password, and expiration timestamp.
+     *
+     * @param sessionId the unique session identifier.
+     * @param password  the password protecting the session.
+     * @param expiresAt the timestamp at which the session should expire.
+     */
     public Session(String sessionId, String password, Instant expiresAt) {
         this.sessionId = sessionId;
         this.password = password;
         this.expiresAt = expiresAt;
     }
 
+    /**
+     * JPA lifecycle callback that automatically sets the creation timestamp
+     * before the entity is first persisted.
+     */
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
@@ -79,6 +101,11 @@ public class Session {
         return files;
     }
 
+    /**
+     * Checks whether this session has passed its expiration time.
+     *
+     * @return {@code true} if the current time is after {@link #expiresAt}.
+     */
     public boolean isExpired() {
         return Instant.now().isAfter(this.expiresAt);
     }
