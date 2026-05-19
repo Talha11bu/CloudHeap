@@ -46,7 +46,7 @@ export const CountdownTimer = ({ expiresAt, durationStr, onExpire }: CountdownTi
 		}, 1000);
 
 		return () => clearInterval(interval);
-	}, [expiresAt]); 
+	}, [expiresAt, timeLeft]); 
 
 	useEffect(() => {
 		if (timeLeft === 0) {

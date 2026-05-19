@@ -1,4 +1,4 @@
-import { useState	 } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
 	Terminal,
@@ -29,7 +29,7 @@ export const AuthModal = ({ onClose }: { onClose: () => void }) => {
 		setLoadingText('NEGOTIATING UPLINK...');
 
 		const formData = new FormData(e.currentTarget);
-		const inputData = Object.fromEntries(formData);
+		const inputData = Object.fromEntries(formData.entries());
 
 		try {
 			let dataFromServer;
@@ -42,14 +42,14 @@ export const AuthModal = ({ onClose }: { onClose: () => void }) => {
 					body: JSON.stringify({
 						username: inputData.username,
 						password: inputData.password,
-						duration: `PT${inputData.duration}M` 
+						duration: `PT${inputData.duration}M`
 					})
 				});
 
 				if (!createRes.ok) throw new Error("Host unreachable or server error.");
 				const createData = await createRes.json();
 				if (createData.sucess === false || createData.success === false) throw new Error("Failed to create session.");
-				
+
 				// Calculate local expiration timestamp to survive page refreshes
 				const durationMs = parseInt(inputData.duration as string, 10) * 60 * 1000;
 				const localExpiresAt = new Date(Date.now() + durationMs).toISOString();
@@ -104,17 +104,17 @@ export const AuthModal = ({ onClose }: { onClose: () => void }) => {
 						body: JSON.stringify({
 							sessionId: cleanSessionId,
 							username: inputData.username,
-							password: inputData.password, 
+							password: inputData.password,
 						})
 					});
 
 					if (!joinRes.ok) {
 						throw new Error("Invalid Session ID, Incorrect Password, or Host Unreachable.");
 					}
-					
+
 					dataFromServer = await joinRes.json();
 				}
-				
+
 				// Ensure clientUsername is injected for the Join path too
 				dataFromServer.clientUsername = inputData.username;
 			}
@@ -126,7 +126,7 @@ export const AuthModal = ({ onClose }: { onClose: () => void }) => {
 
 			const jwtToken = dataFromServer.Token || dataFromServer.token || dataFromServer.JwtToke || dataFromServer.JwtToken;
 			if (!jwtToken) throw new Error("Authentication token missing from server response.");
-			
+
 			localStorage.setItem('silk_road_jwt', jwtToken);
 
 			onClose();

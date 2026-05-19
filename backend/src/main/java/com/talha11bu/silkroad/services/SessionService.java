@@ -10,7 +10,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -42,22 +41,17 @@ public class SessionService {
     public CreateResponse createSession(CreateRequest request) {
         try {
             String newSessionId = idGenerator.generatedId();
-
             var expiration = Instant.now().plus(request.duration());
 
             Session newSession = new Session(newSessionId, request.password(), expiration);
             Session savedSession = sessionRepo.save(newSession);
-            String token = jwtTokenService.generateToken(savedSession.getSessionId(), request.username());
-            Users initialUser = new Users(request.username(), token, "/topic/session/" + savedSession.getSessionId(),
-                    savedSession);
+            
+            String token = registerUser(savedSession, request.username());
 
-            userRepo.save(initialUser);
-
-            return new CreateResponse(true, savedSession.getSessionId(), request.username(), savedSession.getPassword(),
-                    token, request.duration());
+            return new CreateResponse(true, token, savedSession, request.duration());
         } catch (Exception e) {
             System.out.println(e.getMessage());
-            return new CreateResponse(false, null, null, null, null, null);
+            return new CreateResponse(false, null, null, null);
         }
     }
 
@@ -65,36 +59,35 @@ public class SessionService {
     public JoinResponse joinSession(JoinRequest request) {
         try {
             Session session = sessionRepo.findById(request.sessionId()).orElseThrow();
-            if (!request.password().equals(session.getPassword())) {
+            
+            if (!request.password().equals(session.getPassword()) || session.isExpired()) {
                 return new JoinResponse(false, null, null, null);
             }
-            if (session.isExpired()) {
-                return new JoinResponse(false, null, null, null);
-            }
-
-            var token = jwtTokenService.generateToken(request.sessionId(), request.username());
-            Users newUsers = new Users(request.username(), token, "/topic/session/" + request.sessionId(), session);
-            userRepo.save(newUsers);
-
-            SessionNotiff joinNotification = new SessionNotiff(SessionNotiff.NotifyType.USER_JOINED,
-                    session.getSessionId(), request.username());
-
-            Session responseSession = sessionRepo.findById(request.sessionId()).orElseThrow();
-
-            notiffService.notifySessionMembers(session.getSessionId(), joinNotification);
 
             Duration timeLeft = Duration.between(Instant.now(), session.getExpiresAt());
-
             if (timeLeft.isNegative()) {
                 return new JoinResponse(false, null, null, null);
             }
 
-            return new JoinResponse(true, token,
-                    responseSession, timeLeft);
+            String token = registerUser(session, request.username());
+
+            SessionNotiff joinNotification = new SessionNotiff(SessionNotiff.NotifyType.USER_JOINED,
+                    session.getSessionId(), request.username());
+
+            notiffService.notifySessionMembers(session.getSessionId(), joinNotification);
+
+            return new JoinResponse(true, token, session, timeLeft);
 
         } catch (Exception e) {
             return new JoinResponse(false, null, null, null);
         }
+    }
+
+    private String registerUser(Session session, String username) {
+        String token = jwtTokenService.generateToken(session.getSessionId(), username);
+        Users user = new Users(username, token, "/topic/session/" + session.getSessionId(), session);
+        userRepo.save(user);
+        return token;
     }
 
     public JoinResponse rejoinSession(String token) {
@@ -111,21 +104,23 @@ public class SessionService {
         }
     }
 
-    public java.util.Map<String, String> getPreSignedUploadUrl(String sessionId, String fileName, String contentType, String token) {
+    public java.util.Map<String, String> getPreSignedUploadUrl(String sessionId, String fileName, String contentType,
+            String token) {
         Claims claims = jwtTokenService.validateAndParseToken(token);
         String tokenSessionId = claims.get("sid", String.class);
 
         if (tokenSessionId == null || !tokenSessionId.equals(sessionId)) {
             throw new SecurityException("You do not have access to this session.");
         }
-        
+
         sessionRepo.findById(sessionId).orElseThrow(() -> new NoSuchElementException("Session not found."));
 
         return r2Service.generatePreSignedUploadUrl(sessionId, fileName, contentType);
     }
 
     @Transactional
-    public UploadResponse confirmFileUpload(String sessionId, String fileName, String fileKey, long fileSize, String token) {
+    public UploadResponse confirmFileUpload(String sessionId, String fileName, String fileKey, long fileSize,
+            String token) {
         Claims claims = jwtTokenService.validateAndParseToken(token);
         String tokenSessionId = claims.get("sid", String.class);
 
@@ -134,15 +129,17 @@ public class SessionService {
         }
 
         Session session = sessionRepo.findById(sessionId).orElseThrow(() -> new RuntimeException("Session not found."));
-        
-        // At this point, the file is assumed to be successfully uploaded to R2 by the client.
+
+        // At this point, the file is assumed to be successfully uploaded to R2 by the
+        // client.
         Files newFileEntity = new Files(fileName, fileKey, session);
         filesRepo.save(newFileEntity);
 
         SessionNotiff fileNotification = new SessionNotiff(SessionNotiff.NotifyType.FILE_UPLOADED, sessionId, fileName);
         notiffService.notifySessionMembers(sessionId, fileNotification);
 
-        // ContentType isn't strictly necessary here, but we can return empty or derived if needed. We'll return empty string for now.
+        // ContentType isn't strictly necessary here, but we can return empty or derived
+        // if needed. We'll return empty string for now.
         return new UploadResponse(fileName, "", fileSize);
     }
 

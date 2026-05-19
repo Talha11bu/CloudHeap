@@ -4,10 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "bun run index.html",
+    "build": "tsc -b && bun build ./index.html --outdir ./dist",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@stomp/stompjs": "^7.3.0",
@@ -28,7 +27,6 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sockjs-client": "^1.5.4",
-    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -37,7 +35,6 @@
     "postcss": "^8.5.12",
     "tailwindcss": "^4.2.4",
     "typescript": "~6.0.2",
-    "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10"
+    "typescript-eslint": "^8.58.2"
   }
 }

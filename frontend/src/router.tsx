@@ -12,7 +12,7 @@ export const router = createBrowserRouter([
 			{
 				path: 'session',
 				element: <SessionPage />,
-				loader: async ({ request }) => {
+				loader: async () => {
 					const token = localStorage.getItem('silk_road_jwt');
 					if (!token) return redirect('/');
 					return { token };
@@ -43,7 +43,7 @@ export const router = createBrowserRouter([
 				localStorage.setItem('silk_road_jwt', jwt);
 
 				return redirect(`/session?id=${sessionId}`);
-			} catch (err) {
+			} catch {
 				return { error: 'SERVER_UNREACHABLE' };
 			}
 		},

@@ -1,13 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HomePage } from './components/HomePage';
 import { SessionPage } from './components/SessionPage';
-import { AuthModal } from './components/AuthModal';
-import { useState } from 'react';
 import './index.css';
 
 export default function App() {
-	const [isModalOpen, setIsModalOpen] = useState(false);
-
 	return (
 		<BrowserRouter>
 			<div className='min-h-screen bg-[#050505] text-white relative overflow-hidden'>
@@ -16,12 +12,10 @@ export default function App() {
 				<Routes>
 					<Route
 						path='/'
-						element={<HomePage onGetStarted={() => setIsModalOpen(true)} />}
+						element={<HomePage />}
 					/>
 					<Route path='/session' element={<SessionPage />} />
 				</Routes>
-
-				{isModalOpen && <AuthModal onClose={() => setIsModalOpen(false)} />}
 			</div>
 		</BrowserRouter>
 	);
