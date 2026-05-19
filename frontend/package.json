@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun run index.html",
-    "build": "tsc -b && bun build ./index.html --outdir ./dist",
+    "dev": "concurrently \"bun run index.html\" \"bun x tailwindcss -i ./src/index.css -o ./src/output.css --watch\"",
+    "build": "bun x tailwindcss -i ./src/index.css -o ./src/output.css --minify && tsc -b && bun build ./index.html --outdir ./dist",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -22,12 +22,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/vite": "^4.2.4",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sockjs-client": "^1.5.4",
     "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

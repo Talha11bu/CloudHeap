@@ -29,7 +29,13 @@ export const Features = () => {
 		</section>
 	);
 };
-const FeatureCard = ({ icon, title, desc }: any) => (
+interface FeatureCardProps {
+	icon: React.ReactNode;
+	title: string;
+	desc: string;
+}
+
+const FeatureCard = ({ icon, title, desc }: FeatureCardProps) => (
 	<div className='p-8 bg-white/2 border border-white/5 rounded-3xl hover:bg-white/4 hover:border-emerald-500/20 transition-all group'>
 		<div className='text-emerald-500 mb-4 group-hover:scale-110 transition-transform'>
 			{icon}

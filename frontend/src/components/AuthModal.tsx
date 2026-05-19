@@ -10,8 +10,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TimerDial from './HomePage/TimerDial';
-
-const API_BASE = 'http://localhost:8080'; // Update to your backend URL
+import { createSession, joinSession, rejoinSession } from '../api/sessionApi';
+import type { SessionData, SessionResponse } from '../types';
 
 export const AuthModal = ({ onClose }: { onClose: () => void }) => {
 	const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
@@ -32,109 +32,54 @@ export const AuthModal = ({ onClose }: { onClose: () => void }) => {
 		const inputData = Object.fromEntries(formData.entries());
 
 		try {
-			let dataFromServer;
+			let response: SessionResponse;
+			const clientUsername = inputData.username as string;
 
 			if (activeTab === 'create') {
-				// --- 1. CREATE LOGIC ---
-				const createRes = await fetch(`${API_BASE}/sessions/create`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						username: inputData.username,
-						password: inputData.password,
-						duration: `PT${inputData.duration}M`
-					})
-				});
-
-				if (!createRes.ok) throw new Error("Host unreachable or server error.");
-				const createData = await createRes.json();
-				if (createData.sucess === false || createData.success === false) throw new Error("Failed to create session.");
-
-				// Calculate local expiration timestamp to survive page refreshes
-				const durationMs = parseInt(inputData.duration as string, 10) * 60 * 1000;
-				const localExpiresAt = new Date(Date.now() + durationMs).toISOString();
-
-				dataFromServer = {
-					sucess: true,
-					Token: createData.token, // JWT from creation
-					session: {
-						sessionId: createData.sessionId,
-						// Use backend typos safely or fallback to what user typed
-						password: createData.passowrd || inputData.password,
-						expiresAt: localExpiresAt,
-						users: [createData.userName || inputData.username],
-						files: []
-					},
-					timeLeft: createData.duration || `PT${inputData.duration}M`,
-					clientUsername: createData.userName || inputData.username
-				};
-
+				response = await createSession(
+					inputData.username as string,
+					inputData.password as string,
+					parseInt(inputData.duration as string, 10)
+				);
 			} else {
-				// --- 2. JOIN / REJOIN LOGIC ---
-				const token = localStorage.getItem('silk_road_jwt');
-				let joinedSuccessfully = false;
+				// Try rejoin first if token exists
+				const existingToken = localStorage.getItem('silk_road_jwt');
+				let rejoined = false;
 
-				// Attempt Rejoin first if token exists
-				if (token) {
-					try {
-						const rejoinRes = await fetch(`${API_BASE}/sessions/rejoin`, {
-							method: 'POST',
-							headers: { 'Authorization': `Bearer ${token}` }
-						});
-
-						if (rejoinRes.ok) {
-							const rejoinData = await rejoinRes.json();
-							if (rejoinData.sucess !== false && rejoinData.success !== false) {
-								dataFromServer = rejoinData;
-								joinedSuccessfully = true;
-							}
-						}
-					} catch (err) {
-						console.warn("Rejoin token expired or invalid. Falling back to manual join.");
+				if (existingToken) {
+					const rejoinData = await rejoinSession(existingToken);
+					if (rejoinData) {
+						response = rejoinData;
+						rejoined = true;
 					}
 				}
 
-				// If no token, or if Rejoin failed, do a standard Join
-				if (!joinedSuccessfully) {
-					const cleanSessionId = (inputData.sessionId as string).trim();
-
-					const joinRes = await fetch(`${API_BASE}/sessions/join`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							sessionId: cleanSessionId,
-							username: inputData.username,
-							password: inputData.password,
-						})
-					});
-
-					if (!joinRes.ok) {
-						throw new Error("Invalid Session ID, Incorrect Password, or Host Unreachable.");
-					}
-
-					dataFromServer = await joinRes.json();
+				if (!rejoined!) {
+					response = await joinSession(
+						inputData.sessionId as string,
+						inputData.username as string,
+						inputData.password as string
+					);
 				}
-
-				// Ensure clientUsername is injected for the Join path too
-				dataFromServer.clientUsername = inputData.username;
 			}
 
-			// --- 3. VALIDATE AND ROUTE ---
-			if (dataFromServer.sucess === false || dataFromServer.success === false) {
-				throw new Error("Server rejected the handshake.");
+			if (!response!.token) {
+				throw new Error('Authentication token missing from server response.');
 			}
 
-			const jwtToken = dataFromServer.Token || dataFromServer.token || dataFromServer.JwtToke || dataFromServer.JwtToken;
-			if (!jwtToken) throw new Error("Authentication token missing from server response.");
+			localStorage.setItem('silk_road_jwt', response!.token);
 
-			localStorage.setItem('silk_road_jwt', jwtToken);
+			const sessionData: SessionData = {
+				...response!,
+				clientUsername,
+			};
 
 			onClose();
-			navigate('/session', { state: { sessionData: dataFromServer } });
-
-		} catch (err: any) {
-			console.error("Auth Error:", err);
-			setError(err.message || "CONNECTION REFUSED BY HOST");
+			navigate('/session', { state: { sessionData } });
+		} catch (err: unknown) {
+			console.error('Auth Error:', err);
+			const errMsg = err instanceof Error ? err.message : 'CONNECTION REFUSED BY HOST';
+			setError(errMsg);
 			localStorage.removeItem('silk_road_jwt');
 		} finally {
 			setIsLoading(false);

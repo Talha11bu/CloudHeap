@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HomePage } from './components/HomePage';
 import { SessionPage } from './components/SessionPage';
-import './index.css';
+import './output.css';
 
 export default function App() {
 	return (
